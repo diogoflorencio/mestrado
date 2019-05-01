@@ -1,0 +1,187 @@
+---
+title: "News Bias"
+output:
+  html_notebook:
+    code_folding: hide
+    fig_height: 4
+    fig_width: 5
+    theme: readable
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+editor_options: chunk_outp
+---
+
+The objective of this notebook is to analyze the subjective bias of news from the main Brazilian newspapers.... 
+
+```{r}
+require(GGally, quietly = TRUE)
+require(reshape2, quietly = TRUE)
+require(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
+library(ggfortify)
+library(cluster)
+library(ggdendro)
+library(broom)
+library(tidyverse)
+library(plotly)
+library(resample)
+library(highcharter)
+options(warn=-1) # ignore warns
+```
+
+
+```{r}
+data <- read.csv("data/news_bias_formatted.csv",encoding="UTF-8")
+
+data <- data %>%
+    filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+```
+
+# Qual a representatividade de cada dimensão para as notícias?
+
+### Análise por redução de dimensionalidade
+
+O gráfico abaixo exibe a relação entre a variância acumulada nos PCAs com a variância total existente nos dados originais. Com 3 PC's quase 90% da informação original dos dados é representada.
+
+```{r}
+pr.out <- prcomp(select(data, arg, sen, val, pre, mod), scale = FALSE)
+
+tidy(pr.out, "pcs") %>% 
+    ggplot(aes(x = PC, y = cumulative)) + 
+    geom_line(color = "blue") + 
+    geom_point(color = "red") + 
+    labs(x = "PCA's", 
+         y = "Percentual de Representatividade")
+
+```
+
+### Interpretando os resultados
+Os vetores mostram a relação entre PC1, PC2 e as variáveis. O alinhamento entre os vetores `arg` e o eixo PC1 indica que as variáveis geratrizes deste vetore variam bastante para pontos que estão mais a esquerda ou a direita do gráfico. Ou seja, o eixo PC1 `arg`, quanto mais a esquerda o ponto estiver menor são seus valores para `arg`, quanto mais a direita maior serão esses valores.
+
+```{r}
+autoplot(pr.out, data = data, size = 1,
+         loadings = TRUE, loadings.colour = 'blue',
+         loadings.label = TRUE, 
+         loadings.label.size = 6 )
+```
+
+# Existe correlação entre as dimenssões de subjetividade?
+
+### Análise das distribuição das dimenssões por par 
+
+```{r}
+data %>% 
+    filter() %>%
+    select(arg, sen, val, pre, mod) %>% 
+    ggpairs()
+```
+
+# É possível determinar grupos para classificar as notícias?
+
+### Definindo os cluters
+Pode-se definir o número de `clusters` do agrupamento, por meio do calculo da distância quadrática entre o centro dos clusters, o centro dos dados e os dados. Aqui o centro dos dados é um ponto imaginário na média de todas as variáveis. O gráfico relaciona as variáveis `betweenss` e `totss`, essa proporção pode ser usada para definir um bom valor para o número de `clusters`. Quando a proporção para de crescer significativamente, aumentar os `clusters` não resulta numa melhor classificação. Neste caso, um bom valor para o número de `clusters`seria 4.
+
+
+```{r}
+set.seed(123)
+explorando_clusters = tibble(clusters = 1:15) %>% 
+    group_by(clusters) %>% 
+    do(
+        kmeans(select(data, arg, sen, val, pre, mod), 
+               centers = .$clusters, 
+               nstart = 20) %>% glance()
+    )
+
+explorando_clusters %>% 
+    ggplot(aes(x = clusters, y = betweenss / totss)) + 
+    geom_line(color = "blue") + 
+    geom_point(color = "red")
+```
+
+### Interpretando os clusters
+O método de clustering utilizado foi o `k- means`, por meio da análise  dos agrupos podemos classificar os clusters. O `cluter 1` corresponde as notícias com menos viés de subjetividade, pois é o grupo que apresenta menor valor nas dimenssões. O `cluter 3` pode ser considerado o menos enviesado, por apresentar notícias com os maiores valores dimensionais.
+
+```{r}
+set.seed(123)
+
+n_clusters = 4
+
+km = select(data, arg, sen, val, pre, mod) %>% 
+    kmeans(centers = n_clusters, nstart = 20)
+
+dados.long = km %>% 
+    augment(data) %>% 
+    gather(key = "dimensão", 
+           value = "valor", 
+           arg, sen, val, pre, mod) 
+
+autoplot(km, data = data, label = TRUE)
+
+dados.long %>% 
+    ggplot(aes(x = `dimensão`, y = valor, group = section, colour = .cluster)) + 
+    geom_point(alpha = 0.2) + 
+    geom_line(alpha = .5) + 
+    facet_wrap(~ paste("Cluster ",.cluster)) 
+```
+
+# Qual o jornal mais subjetivo (considerando todas as notícias em um ano de coleta)?
+
+```{r}
+hcboxplot(x = data$arg, var = data$section, outliers = FALSE, color = "green") 
+```
+
+# Como é a distribuição no tempo(mês)?
+
+```{r}
+highchart() %>% 
+  hc_xAxis(prisonBreak$season_ep) %>% 
+  hc_add_series(name = "temporada 1" , data = (prisonBreak %>% filter(season == 1))$UserRating) %>%  
+  hc_add_series(name = "temporada 2" , data = (prisonBreak %>% filter(season == 2))$UserRating) %>%  
+  hc_add_series(name = "temporada 3" , data = (prisonBreak %>% filter(season == 3))$UserRating)
+
+```
+
+
+# Mesma perguntas acima por cadernos
+
+# Comparação de subjetividade entre notícias e sátiras
+
+# Relação entre tamanho do texto e quantidade de comentários
+
+# Relação entre subjetividade e tamanho do texto em uma notícia
+
+# Relação entre subjetiidade da notícia e quantidade de comentários
+
+# Comparar a subjetividade de notícias e seus comentários
+
+
+# Como é a distribuição das dimenssões
+
+```{r}
+select(data, section, arg, sen, val, pre, mod) %>%
+  ggplot(aes(x = "", y = sen)) + 
+      geom_boxplot(width = .2, outlier.colour = NA, coef = 1000)
+```
+
+```{r}
+ select(data, section, arg, sen, val, pre, mod) %>%
+  ggplot(aes(x = "", y = val)) + 
+      geom_boxplot(width = .2, outlier.colour = NA, coef = 1000)
+```
+
+```{r}
+ select(data, section, arg, sen, val, pre, mod) %>%
+  ggplot(aes(x = "", y = pre)) + 
+      geom_boxplot(width = .2, outlier.colour = NA, coef = 1000)
+```
+
+```{r}
+ select(data, section, arg, sen, val, pre, mod) %>%
+  ggplot(aes(x = "", y = mod)) + 
+      geom_boxplot(width = .2, outlier.colour = NA, coef = 1000)
+```
+
+
+
