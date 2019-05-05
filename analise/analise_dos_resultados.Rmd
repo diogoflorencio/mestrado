@@ -183,5 +183,3 @@ select(data, section, arg, sen, val, pre, mod) %>%
       geom_boxplot(width = .2, outlier.colour = NA, coef = 1000)
 ```
 
-
-
