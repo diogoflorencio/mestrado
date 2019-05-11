@@ -33,7 +33,7 @@ options(warn=-1) # ignore warns
 
 
 ```{r}
-data <- read.csv("data/news_bias_formatted.csv",encoding="UTF-8")
+data <- read.csv("../data/news_bias_formatted.csv",encoding="UTF-8")
 
 data <- data %>%
     filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
