@@ -22,28 +22,46 @@ require(reshape2, quietly = TRUE)
 require(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
 library(ggfortify)
 library(cluster)
-library(ggdendro)
 library(broom)
 library(tidyverse)
 library(plotly)
 library(resample)
 library(highcharter)
+library(lubridate)
+library(ggpubr)
+library(mongolite)
 options(warn=-1) # ignore warns
 ```
 
+```{r}
+library(plyr)
+carta_capital <- mongo(db = "news_2018", collection = "carta_capital", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+estadao <- mongo(db = "news_2018", collection = "estadao", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+folha <- mongo(db = "news_2018", collection = "folha", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+oantagonista <- mongo(db = "news_2018", collection = "oantagonista", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+oglobo <- mongo(db = "news_2018", collection = "oglobo", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+veja <- mongo(db = "news_2018", collection = "veja", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+
+data <- rbind.fill(carta_capital, estadao, folha, oantagonista, oglobo, veja) %>% 
+  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+``` 
+
+# Existe correlação entre as dimenssões de subjetividade?
+
+### Análise das distribuição das dimenssões por par 
+Ao analisar o plot par a par de cada dimenssão percebemos que todas as dimenssões possuem uma correlação positiva significante entre si, em especial `val x mod` e `pre x mod` possuem uma correlação mais forte. 
 
 ```{r}
-data <- read.csv("../data/news_bias_formatted.csv",encoding="UTF-8")
-
-data <- data %>%
-    filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+data %>% 
+    select(arg, sen, val, pre, mod) %>% 
+    ggpairs()
 ```
 
-# Qual a representatividade de cada dimensão para as notícias?
+# Qual a representatividade das dimenssões para o viés das notícias?
 
 ### Análise por redução de dimensionalidade
-
-O gráfico abaixo exibe a relação entre a variância acumulada nos PCAs com a variância total existente nos dados originais. Com 3 PC's quase 90% da informação original dos dados é representada.
+Para avaliar a representatividade de cada dimenssão vamos reduzilas por meio da técnica PCA e comparar a variância acumulada nos PCAs com a variância total existente nos dados originais.
+O gráfico abaixo exibe a relação dessas variâncias, com 3 PC's quase 90% da informação original dos dados é representada.
 
 ```{r}
 pr.out <- prcomp(select(data, arg, sen, val, pre, mod), scale = FALSE)
@@ -52,9 +70,9 @@ tidy(pr.out, "pcs") %>%
     ggplot(aes(x = PC, y = cumulative)) + 
     geom_line(color = "blue") + 
     geom_point(color = "red") + 
-    labs(x = "PCA's", 
-         y = "Percentual de Representatividade")
-
+    labs(title = "Quantidade de PCA's x Variânia Percentual",
+         x = "PCA's", 
+         y = "Percentual da variância")
 ```
 
 ### Interpretando os resultados
@@ -64,25 +82,16 @@ Os vetores mostram a relação entre PC1, PC2 e as variáveis. O alinhamento ent
 autoplot(pr.out, data = data, size = 1,
          loadings = TRUE, loadings.colour = 'blue',
          loadings.label = TRUE, 
-         loadings.label.size = 6 )
-```
-
-# Existe correlação entre as dimenssões de subjetividade?
-
-### Análise das distribuição das dimenssões por par 
-
-```{r}
-data %>% 
-    filter() %>%
-    select(arg, sen, val, pre, mod) %>% 
-    ggpairs()
+         loadings.label.size = 6)  + 
+         labs(title = "Análise das dimenssões por vetores",
+               x = "PCA 1", 
+               y = "PCA 2")
 ```
 
 # É possível determinar grupos para classificar as notícias?
 
 ### Definindo os cluters
-Pode-se definir o número de `clusters` do agrupamento, por meio do calculo da distância quadrática entre o centro dos clusters, o centro dos dados e os dados. Aqui o centro dos dados é um ponto imaginário na média de todas as variáveis. O gráfico relaciona as variáveis `betweenss` e `totss`, essa proporção pode ser usada para definir um bom valor para o número de `clusters`. Quando a proporção para de crescer significativamente, aumentar os `clusters` não resulta numa melhor classificação. Neste caso, um bom valor para o número de `clusters`seria 4.
-
+Pode-se definir o número de `clusters` do agrupamento por meio do calculo da distância quadrática entre o centro dos clusters, o centro dos dados e os dados. Aqui o centro dos dados é um ponto imaginário na média de todas as variáveis. O gráfico relaciona as variáveis `betweenss` e `totss`, essa proporção pode ser usada para definir um bom valor para o número de `clusters`. Quando a proporção para de crescer significativamente, aumentar os `clusters` não resulta numa melhor classificação. Neste caso, um bom valor para o número de `clusters` seria 4.
 
 ```{r}
 set.seed(123)
@@ -97,7 +106,8 @@ explorando_clusters = tibble(clusters = 1:15) %>%
 explorando_clusters %>% 
     ggplot(aes(x = clusters, y = betweenss / totss)) + 
     geom_line(color = "blue") + 
-    geom_point(color = "red")
+    geom_point(color = "red")  + 
+    labs(title = "Análise de clustering")
 ```
 
 ### Interpretando os clusters
@@ -117,69 +127,186 @@ dados.long = km %>%
            value = "valor", 
            arg, sen, val, pre, mod) 
 
-autoplot(km, data = data, label = TRUE)
+autoplot(km, data = data, label = TRUE)  + 
+    labs(title = "Agrupamento por viés",
+         x = "PCA 1", 
+         y = "PCA 2")
 
 dados.long %>% 
     ggplot(aes(x = `dimensão`, y = valor, group = section, colour = .cluster)) + 
     geom_point(alpha = 0.2) + 
     geom_line(alpha = .5) + 
-    facet_wrap(~ paste("Cluster ",.cluster)) 
+    facet_wrap(~ paste("Cluster ",.cluster)) +
+    labs(title = "Clusters")
 ```
 
-# Qual o jornal mais subjetivo (considerando todas as notícias em um ano de coleta)?
+# Qual o caderno mais subjetivo (considerando todas as notícias em um ano de coleta)?
 
 ```{r}
-hcboxplot(x = data$arg, var = data$section, outliers = FALSE, color = "green") 
-```
+bias_section <- data %>%
+  mutate(month = month(as_datetime(as.numeric(date)))) %>%
+  group_by(month, section) %>%
+  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 4) * 100)
 
-# Como é a distribuição no tempo(mês)?
-
-```{r}
 highchart() %>% 
-  hc_xAxis(prisonBreak$season_ep) %>% 
-  hc_add_series(name = "temporada 1" , data = (prisonBreak %>% filter(season == 1))$UserRating) %>%  
-  hc_add_series(name = "temporada 2" , data = (prisonBreak %>% filter(season == 2))$UserRating) %>%  
-  hc_add_series(name = "temporada 3" , data = (prisonBreak %>% filter(season == 3))$UserRating)
+  hc_title(text = "Distribuição de viés de cada caderno por mês") %>%
+  hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")) %>% 
+  hc_yAxis(title = list(text = "percentage of bias"),
+           labels = list(format = "{value}%"), max = 75) %>% 
+  hc_tooltip(pointFormat = "{point.y}%") %>% 
+  hc_add_series(name = "diversos" , data = (bias_section %>% filter(section == "diversos"))$bias) %>%  
+  hc_add_series(name = "economia" , data = (bias_section %>% filter(section == "economia"))$bias) %>%  
+  hc_add_series(name = "educacao" , data = (bias_section %>% filter(section == "educacao"))$bias) %>% 
+  hc_add_series(name = "esporte" , data = (bias_section %>% filter(section == "esporte"))$bias) %>% 
+  hc_add_series(name = "internacional" , data = (bias_section %>% filter(section == "internacional"))$bias) %>% 
+  hc_add_series(name = "opiniao" , data = (bias_section %>% filter(section == "opiniao"))$bias) %>% 
+  hc_add_series(name = "politica" , data = (bias_section %>% filter(section == "politica"))$bias) %>% 
+  hc_add_series(name = "tecnologia" , data = (bias_section %>% filter(section == "tecnologia"))$bias)
 
 ```
 
+# Como é a distribuição de viés no tempo (mês)?
+As dimenssões de subjetividade pouco variam no tempo, mas podemos notar que 
+```{r}
+bias_month <- data %>%
+  mutate(month = month(as_datetime(date))) %>%
+  group_by(month) %>%
+  summarise(
+    arg = mean(arg),
+    sen = mean(sen),
+    val = mean(val),
+    pre = mean(pre),
+    mod = mean(mod)
+  )
 
-# Mesma perguntas acima por cadernos
+highchart() %>% 
+  hc_title(text = "Distribuição de viés por mês") %>%
+  hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")) %>% 
+  hc_yAxis(title = list(text = "bias")) %>% 
+  hc_tooltip(pointFormat = "{point.y}%") %>% 
+  hc_add_series(name = "arg" , data = (bias_month$arg)) %>% 
+  hc_add_series(name = "sen" , data = (bias_month$sen)) %>% 
+  hc_add_series(name = "val" , data = (bias_month$val)) %>% 
+  hc_add_series(name = "pre" , data = (bias_month$pre)) %>% 
+  hc_add_series(name = "mod" , data = (bias_month$mod))
+```
+
+# Mesma perguntas acima por jornais
 
 # Comparação de subjetividade entre notícias e sátiras
 
-# Relação entre tamanho do texto e quantidade de comentários
+# Existe relação entre tamanho do texto e quantidade de comentários
+
+```{r}
+oantagonistaMetaData <- mongo(db = "news_2018", collection = "oantagonistaMetaData", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+ogloboMetaData <- mongo(db = "news_2018", collection = "ogloboMetaData", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+vejaMetaData <- mongo(db = "news_2018", collection = "vejaMetaData", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+
+metaData <- rbind(oantagonistaMetaData, ogloboMetaData, vejaMetaData)
+
+metaData %>%
+    filter(text_size <= 1000 & number_comments <= 1000) %>% 
+    ggplot(aes(x = text_size, y = number_comments)) +
+    geom_point() +
+    labs(title = "Text size x Number of comments", x = "text size", y = "number of comments")
+
+metaData %>% 
+  filter(text_size <= 1000 & number_comments <= 1000) %>%
+  summarise(pearson = cor(text_size, number_comments, method = "pearson"), 
+            spearman = cor(text_size, number_comments, method = "spearman"), 
+            kendall = cor(text_size, number_comments, method = "kendall"))
+
+```
+
 
 # Relação entre subjetividade e tamanho do texto em uma notícia
+```{r}
+colnames(metaData)[3] <- "url"
+dataMetaData <- merge(x = data, y = metaData, all = TRUE) %>% filter(!is.na(text_size) & !is.na(number_comments))
+
+dataMetaData <- dataMetaData %>% 
+  mutate(bias = (1 - (arg + sen + val + pre + mod) / 4) * 100) %>% 
+  filter(!is.na(bias))
+
+dataMetaData %>%
+    filter( bias >= 25) %>% 
+    ggplot(aes(x = text_size, y = bias)) +
+    geom_point() +
+    labs(title = "Text size x Bias", x = "text size", y = "bias")
+
+dataMetaData %>% 
+  filter( bias >= 25) %>% 
+  summarise(pearson = cor(text_size, bias, method = "pearson"), 
+            spearman = cor(text_size, bias, method = "spearman"), 
+            kendall = cor(text_size, bias, method = "kendall"))
+
+
+```
 
 # Relação entre subjetiidade da notícia e quantidade de comentários
 
+```{r}
+dataMetaData %>%
+    filter( bias >= 25) %>% 
+    ggplot(aes(x = number_comments, y = bias)) +
+    geom_point() +
+    labs(title = "Number of comments x Bias", x = "number of comments", y = "bias")
+
+dataMetaData %>% 
+  filter( bias >= 25) %>% 
+  summarise(pearson = cor(number_comments, bias, method = "pearson"), 
+            spearman = cor(number_comments, bias, method = "spearman"), 
+            kendall = cor(number_comments, bias, method = "kendall"))
+
+```
+
 # Comparar a subjetividade de notícias e seus comentários
+```{r}
+biasComments <- mongo(db = "news_2018", collection = "biasComments", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+
+biasComments <- biasComments %>% 
+  mutate(bias_comment = (1 - (arg + sen + val + pre + mod) / 4) * 100) %>% 
+  filter(!is.na(bias_comment)) %>% 
+  select(url, bias_comment)
+
+#all_bias <- merge(dataMetaData , biasComments, by = "url", all = TRUE) error
+
+```
 
 
 # Como é a distribuição das dimenssões
 
 ```{r}
-select(data, section, arg, sen, val, pre, mod) %>%
-  ggplot(aes(x = "", y = sen)) + 
-      geom_boxplot(width = .2, outlier.colour = NA, coef = 1000)
+bxp_arg <- ggplot(data, aes(x = "", y = arg)) + 
+  geom_boxplot(width = .5, outlier.color  = "red", outlier.alpha = .2) +
+  labs( x = "valoração")
+
+bxp_sen <- ggplot(data, aes(x = "", y = sen)) + 
+  geom_boxplot(width = .5, outlier.color  = "orange", outlier.alpha = .2) +
+  labs( x = "sentimento")
+
+bxp_val <- ggplot(data, aes(x = "", y = val)) + 
+  geom_boxplot(width = .5, outlier.color  = "yellow", outlier.alpha = .2) +
+  labs( x = "argumentação")
+
+bxp_pre <- ggplot(data, aes(x = "", y = pre)) + 
+  geom_boxplot(width = .5, outlier.color  = "green", outlier.alpha = .2) +
+  labs( x = "pressuposição")
+
+bxp_mod <- ggplot(data, aes(x = "", y = mod)) + 
+  geom_boxplot(width = .5, outlier.color  = "blue", outlier.alpha = .2) +
+  labs( x = "mod")
+
+ggarrange(bxp_arg, bxp_sen, bxp_val, bxp_pre, bxp_mod, labels = c("Arg", "Sen", "Val", "Pre", "Mod"), nrow = 3, ncol = 2)
 ```
 
 ```{r}
- select(data, section, arg, sen, val, pre, mod) %>%
-  ggplot(aes(x = "", y = val)) + 
-      geom_boxplot(width = .2, outlier.colour = NA, coef = 1000)
-```
+highchart() %>% 
+  hc_add_series_boxplot(x = data$arg, outliers = FALSE, name = "arg") %>% 
+  hc_add_series_boxplot(x = data$sen, outliers = FALSE, name = "sen") %>% 
+  hc_add_series_boxplot(x = data$val, outliers = FALSE, name = "val") %>% 
+  hc_add_series_boxplot(x = data$pre, outliers = FALSE, name = "pre") %>% 
+  hc_add_series_boxplot(x = data$mod, outliers = FALSE, name = "mod")
 
-```{r}
- select(data, section, arg, sen, val, pre, mod) %>%
-  ggplot(aes(x = "", y = pre)) + 
-      geom_boxplot(width = .2, outlier.colour = NA, coef = 1000)
-```
-
-```{r}
- select(data, section, arg, sen, val, pre, mod) %>%
-  ggplot(aes(x = "", y = mod)) + 
-      geom_boxplot(width = .2, outlier.colour = NA, coef = 1000)
 ```
 
