@@ -29,21 +29,19 @@ library(resample)
 library(highcharter)
 library(lubridate)
 library(ggpubr)
-library(mongolite)
+library(here)
 options(warn=-1) # ignore warns
 ```
 
 ```{r}
-library(plyr)
-carta_capital <- mongo(db = "news_2018", collection = "carta_capital", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
-estadao <- mongo(db = "news_2018", collection = "estadao", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
-folha <- mongo(db = "news_2018", collection = "folha", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
-oantagonista <- mongo(db = "news_2018", collection = "oantagonista", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
-oglobo <- mongo(db = "news_2018", collection = "oglobo", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
-veja <- mongo(db = "news_2018", collection = "veja", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+carta_capital <- read_csv(here::here("data/carta_capital.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+estadao <- read_csv(here::here("data/estadao.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+folha <- read_csv(here::here("data/folha.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oantagonista <- read_csv(here::here("data/oantagonista.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oglobo <- read_csv(here::here("data/oglobo.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+veja <- read_csv(here::here("data/veja.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 
-data <- rbind.fill(carta_capital, estadao, folha, oantagonista, oglobo, veja) %>% 
-  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+news <- rbind(carta_capital, estadao, folha, oantagonista, oglobo, veja)
 ``` 
 
 # Existe correlação entre as dimenssões de subjetividade?
@@ -52,7 +50,7 @@ data <- rbind.fill(carta_capital, estadao, folha, oantagonista, oglobo, veja) %>
 Ao analisar o plot par a par de cada dimenssão percebemos que todas as dimenssões possuem uma correlação positiva significante entre si, em especial `val x mod` e `pre x mod` possuem uma correlação mais forte. 
 
 ```{r}
-data %>% 
+news %>% 
     select(arg, sen, val, pre, mod) %>% 
     ggpairs()
 ```
@@ -64,7 +62,7 @@ Para avaliar a representatividade de cada dimenssão vamos reduzilas por meio da
 O gráfico abaixo exibe a relação dessas variâncias, com 3 PC's quase 90% da informação original dos dados é representada.
 
 ```{r}
-pr.out <- prcomp(select(data, arg, sen, val, pre, mod), scale = FALSE)
+pr.out <- prcomp(select(news, arg, sen, val, pre, mod), scale = FALSE)
 
 tidy(pr.out, "pcs") %>% 
     ggplot(aes(x = PC, y = cumulative)) + 
@@ -79,7 +77,7 @@ tidy(pr.out, "pcs") %>%
 Os vetores mostram a relação entre PC1, PC2 e as variáveis. O alinhamento entre os vetores `arg` e o eixo PC1 indica que as variáveis geratrizes deste vetore variam bastante para pontos que estão mais a esquerda ou a direita do gráfico. Ou seja, o eixo PC1 `arg`, quanto mais a esquerda o ponto estiver menor são seus valores para `arg`, quanto mais a direita maior serão esses valores.
 
 ```{r}
-autoplot(pr.out, data = data, size = 1,
+autoplot(pr.out, data = news, size = 1,
          loadings = TRUE, loadings.colour = 'blue',
          loadings.label = TRUE, 
          loadings.label.size = 6)  + 
@@ -98,7 +96,7 @@ set.seed(123)
 explorando_clusters = tibble(clusters = 1:15) %>% 
     group_by(clusters) %>% 
     do(
-        kmeans(select(data, arg, sen, val, pre, mod), 
+        kmeans(select(news, arg, sen, val, pre, mod), 
                centers = .$clusters, 
                nstart = 20) %>% glance()
     )
@@ -118,16 +116,16 @@ set.seed(123)
 
 n_clusters = 4
 
-km = select(data, arg, sen, val, pre, mod) %>% 
+km = select(news, arg, sen, val, pre, mod) %>% 
     kmeans(centers = n_clusters, nstart = 20)
 
 dados.long = km %>% 
-    augment(data) %>% 
+    augment(news) %>% 
     gather(key = "dimensão", 
            value = "valor", 
            arg, sen, val, pre, mod) 
 
-autoplot(km, data = data, label = TRUE)  + 
+autoplot(km, data = news, label = TRUE)  + 
     labs(title = "Agrupamento por viés",
          x = "PCA 1", 
          y = "PCA 2")
@@ -142,17 +140,23 @@ dados.long %>%
 
 # Qual o caderno mais subjetivo (considerando todas as notícias em um ano de coleta)?
 
+Para estimar o caderno mais subjetivo ao longo do ano criamos o conceito de percentual de subjetividade definido como:
+  
+  <p>$percent_{bias} = \sum_{i=1}^{N} [1-(\frac{arg_i + sen_i + val_i + pre_i + mod_i}{5.N})].100$
+
+Analisando o plot do `percentual de subjetividade` por mês, percebemos que o caderno de política detém o maior viés durante o período eleitoral e após o término das eleições o cadernos apresenta queda de subjetividade. O caderno de esporte também apresenta queda de viés no periodo pós copa do mundo. Os outros cadernos mantém o mesmo percentual de subjetividade ao longo de 218 sem apresentar variações significativas.
+
 ```{r}
-bias_section <- data %>%
+bias_section <- news %>%
   mutate(month = month(as_datetime(as.numeric(date)))) %>%
   group_by(month, section) %>%
-  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 4) * 100)
+  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
 
 highchart() %>% 
-  hc_title(text = "Distribuição de viés de cada caderno por mês") %>%
+  hc_title(text = "Bias distribution of each section per month") %>%
   hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")) %>% 
   hc_yAxis(title = list(text = "percentage of bias"),
-           labels = list(format = "{value}%"), max = 75) %>% 
+           labels = list(format = "{value}%"), max = 80) %>% 
   hc_tooltip(pointFormat = "{point.y}%") %>% 
   hc_add_series(name = "diversos" , data = (bias_section %>% filter(section == "diversos"))$bias) %>%  
   hc_add_series(name = "economia" , data = (bias_section %>% filter(section == "economia"))$bias) %>%  
@@ -165,10 +169,12 @@ highchart() %>%
 
 ```
 
-# Como é a distribuição de viés no tempo (mês)?
-As dimenssões de subjetividade pouco variam no tempo, mas podemos notar que 
+# Como é a distribuição das dimenssões de subjetividade ao longo do ano?
+
+As dimenssões de subjetividade pouco variam no tempo, mas podemos notar que as dimenssões de `sentimento` e `argumentação` mantém um nível de viés menor que as demais ao longo de todo o ano, e não apresentarem correlação forte, de qualquer natureza, entre si.
+
 ```{r}
-bias_month <- data %>%
+bias_month <- news %>%
   mutate(month = month(as_datetime(date))) %>%
   group_by(month) %>%
   summarise(
@@ -180,7 +186,7 @@ bias_month <- data %>%
   )
 
 highchart() %>% 
-  hc_title(text = "Distribuição de viés por mês") %>%
+  hc_title(text = "Distribution of bias per month") %>%
   hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")) %>% 
   hc_yAxis(title = list(text = "bias")) %>% 
   hc_tooltip(pointFormat = "{point.y}%") %>% 
@@ -191,35 +197,85 @@ highchart() %>%
   hc_add_series(name = "mod" , data = (bias_month$mod))
 ```
 
-# Mesma perguntas acima por jornais
+# Qual o jornal mais subjetivo (considerando todas as notícias em um ano de coleta)?
+
+Plotando o `percentual de viés` x `mês` para cada jornal percebemos que diferente do esperado a `carta capital` apresentou o menor percentual de viés ao longo de 2018. O jornal mais enviesado foi o `oantagonista` com aproximandamente `10%` de viés a mais que a `carta capital` ao longo do ano. 
+
+```{r}
+bias_carta_capita <- carta_capital %>%
+  mutate(month = month(as_datetime(as.numeric(date)))) %>%
+  group_by(month) %>%
+  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
+
+bias_estadao <- estadao %>%
+  mutate(month = month(as_datetime(as.numeric(date)))) %>%
+  group_by(month) %>%
+  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
+
+bias_folha <- folha %>%
+  mutate(month = month(as_datetime(as.numeric(date)))) %>%
+  group_by(month) %>%
+  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
+
+bias_oantagonista <- oantagonista %>%
+  mutate(month = month(as_datetime(as.numeric(date)))) %>%
+  group_by(month) %>%
+  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
+
+bias_oglobo <- oglobo %>%
+  mutate(month = month(as_datetime(as.numeric(date)))) %>%
+  group_by(month) %>%
+  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
+
+bias_veja <- veja %>%
+  mutate(month = month(as_datetime(as.numeric(date)))) %>%
+  group_by(month) %>%
+  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
+
+highchart() %>% 
+  hc_title(text = "Bias distribution of each mainstream per month") %>%
+  hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")) %>% 
+  hc_yAxis(title = list(text = "percentage of bias"),
+           labels = list(format = "{value}%"), max = 85) %>% 
+  hc_tooltip(pointFormat = "{point.y}%") %>% 
+  hc_add_series(name = "carta_capital" , data = bias_carta_capita$bias) %>%  
+  hc_add_series(name = "estadao" , data = bias_estadao$bias) %>%  
+  hc_add_series(name = "folha" , data = bias_folha$bias) %>% 
+  hc_add_series(name = "oantagonista" , bias_oantagonista$bias) %>% 
+  hc_add_series(name = "oglobo" , data = bias_oglobo$bias) %>% 
+  hc_add_series(name = "veja" , data = bias_veja$bias) 
+```
+
 
 # Comparação de subjetividade entre notícias e sátiras
 
+```{r}
+
+```
+
 # Existe relação entre tamanho do texto e quantidade de comentários
 
-```{r}
-oantagonistaMetaData <- mongo(db = "news_2018", collection = "oantagonistaMetaData", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
-ogloboMetaData <- mongo(db = "news_2018", collection = "ogloboMetaData", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
-vejaMetaData <- mongo(db = "news_2018", collection = "vejaMetaData", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+Analisando o gráfico podemos perceber algum tipo de correlação, ao estimar os coeficientes de correlação percebemos que de fato existe uma correlação negativa não linear significativa entre as variáveis, ou seja, enquanto menor o texto mais comentários ele tende a ter.
 
-metaData <- rbind(oantagonistaMetaData, ogloboMetaData, vejaMetaData)
+```{r}
+metaData <- read_csv(here::here("data/meta_data.csv")) %>% 
+  filter(text_size <= 1000 & number_comments <= 1000) # remove outliers
 
 metaData %>%
-    filter(text_size <= 1000 & number_comments <= 1000) %>% 
     ggplot(aes(x = text_size, y = number_comments)) +
     geom_point() +
     labs(title = "Text size x Number of comments", x = "text size", y = "number of comments")
 
 metaData %>% 
-  filter(text_size <= 1000 & number_comments <= 1000) %>%
   summarise(pearson = cor(text_size, number_comments, method = "pearson"), 
             spearman = cor(text_size, number_comments, method = "spearman"), 
-            kendall = cor(text_size, number_comments, method = "kendall"))
-
+            kendall = cor(text_size, number_comments, method = "kendall")
+            )
 ```
 
 
 # Relação entre subjetividade e tamanho do texto em uma notícia
+
 ```{r}
 colnames(metaData)[3] <- "url"
 dataMetaData <- merge(x = data, y = metaData, all = TRUE) %>% filter(!is.na(text_size) & !is.na(number_comments))
@@ -262,14 +318,21 @@ dataMetaData %>%
 
 # Comparar a subjetividade de notícias e seus comentários
 ```{r}
-biasComments <- mongo(db = "news_2018", collection = "biasComments", url = "mongodb://192.168.1.8:27017", verbose = TRUE)$find("{}")
+biasComments <- read_csv(here::here("data/bias_comments.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+biasComments[["url"]] <- biasComments[["url"]][0]
 
 biasComments <- biasComments %>% 
   mutate(bias_comment = (1 - (arg + sen + val + pre + mod) / 4) * 100) %>% 
-  filter(!is.na(bias_comment)) %>% 
-  select(url, bias_comment)
+  select(url, bias_comment) %>% 
+  group_by(url) %>% 
+  summarise(bias_comment = mean(bias_comment))
 
-#all_bias <- merge(dataMetaData , biasComments, by = "url", all = TRUE) error
+biasNews <- news %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 4) * 100) %>% 
+  select(url, bias_news)
+
+
+all_bias <- merge(biasNews , biasComments, by = "url", all = FALSE) 
 
 ```
 
