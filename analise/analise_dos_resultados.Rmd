@@ -277,6 +277,9 @@ metaData %>%
 
 # Comparar a subjetividade de notícias e seus comentários
 
+### Correlação entre bias de notícias e comentários
+
+Analisando o plot e os coeficientes estimados percebemos que não existe qualquer tipo de correlação entre as variáveis. 
 
 ```{r}
 biasComments <- read_csv(here::here("data/bias_comments.csv")) %>% 
@@ -309,8 +312,22 @@ all_bias  %>%
 
 ```
 
+### Comparando as distribuições de viés para notícias e comentários
+
+Perbemos que a distribuição das notícias e mais concentrada e possui média maior do que a dos comentários.
+
+```{r}
+highchart() %>% 
+  hc_yAxis(title = list(text = "Distribution of bias")) %>% 
+  hc_add_series_boxplot(x = all_bias$bias_news, outliers = FALSE, name = "news") %>% 
+  hc_add_series_boxplot(x = all_bias$bias_comment, outliers = FALSE, name = "comments")
+
+```
+
 
 # Como é a distribuição das dimenssões
+
+Percebemos que, como visto anteriormente, a dimensão de `sentimento` e `argumentão` são as 2 que apresentam menor viés, respectivamente, apesar da diferença entre qualquer dimenssão não ser siginificativmente grande.
 
 ```{r}
 bxp_arg <- ggplot(news, aes(x = "", y = arg)) + 
@@ -333,11 +350,13 @@ bxp_mod <- ggplot(news, aes(x = "", y = mod)) +
   geom_boxplot(width = .5, outlier.color  = "blue", outlier.alpha = .2) +
   labs( x = "mod")
 
-ggarrange(bxp_arg, bxp_sen, bxp_val, bxp_pre, bxp_mod, labels = c("Arg", "Sen", "Val", "Pre", "Mod"), nrow = 3, ncol = 2)
+ggarrange(bxp_arg, bxp_sen, bxp_val, bxp_pre, bxp_mod, labels = c("Arg", "Sen", "Val", "Pre", "Mod"), nrow = 3, ncol = 2) +
+  labs(title = "Distribution of bias for each dimension")
 ```
 
 ```{r}
 highchart() %>% 
+  hc_yAxis(title = list(text = "Distribution of bias for each dimension")) %>% 
   hc_add_series_boxplot(x = news$arg, outliers = FALSE, name = "arg") %>% 
   hc_add_series_boxplot(x = news$sen, outliers = FALSE, name = "sen") %>% 
   hc_add_series_boxplot(x = news$val, outliers = FALSE, name = "val") %>% 
