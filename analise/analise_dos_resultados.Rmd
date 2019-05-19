@@ -34,6 +34,7 @@ options(warn=-1) # ignore warns
 ```
 
 ```{r}
+options(warn=-1) # ignore warns
 carta_capital <- read_csv(here::here("data/carta_capital.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 estadao <- read_csv(here::here("data/estadao.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 folha <- read_csv(here::here("data/folha.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
@@ -50,6 +51,7 @@ news <- rbind(carta_capital, estadao, folha, oantagonista, oglobo, veja)
 Ao analisar o plot par a par de cada dimenssão percebemos que todas as dimenssões possuem uma correlação positiva significante entre si, em especial `val x mod` e `pre x mod` possuem uma correlação mais forte. 
 
 ```{r}
+options(warn=-1) # ignore warns
 news %>% 
     select(arg, sen, val, pre, mod) %>% 
     ggpairs()
@@ -273,66 +275,37 @@ metaData %>%
             )
 ```
 
-
-# Relação entre subjetividade e tamanho do texto em uma notícia
-
-```{r}
-colnames(metaData)[3] <- "url"
-dataMetaData <- merge(x = data, y = metaData, all = TRUE) %>% filter(!is.na(text_size) & !is.na(number_comments))
-
-dataMetaData <- dataMetaData %>% 
-  mutate(bias = (1 - (arg + sen + val + pre + mod) / 4) * 100) %>% 
-  filter(!is.na(bias))
-
-dataMetaData %>%
-    filter( bias >= 25) %>% 
-    ggplot(aes(x = text_size, y = bias)) +
-    geom_point() +
-    labs(title = "Text size x Bias", x = "text size", y = "bias")
-
-dataMetaData %>% 
-  filter( bias >= 25) %>% 
-  summarise(pearson = cor(text_size, bias, method = "pearson"), 
-            spearman = cor(text_size, bias, method = "spearman"), 
-            kendall = cor(text_size, bias, method = "kendall"))
-
-
-```
-
-# Relação entre subjetiidade da notícia e quantidade de comentários
-
-```{r}
-dataMetaData %>%
-    filter( bias >= 25) %>% 
-    ggplot(aes(x = number_comments, y = bias)) +
-    geom_point() +
-    labs(title = "Number of comments x Bias", x = "number of comments", y = "bias")
-
-dataMetaData %>% 
-  filter( bias >= 25) %>% 
-  summarise(pearson = cor(number_comments, bias, method = "pearson"), 
-            spearman = cor(number_comments, bias, method = "spearman"), 
-            kendall = cor(number_comments, bias, method = "kendall"))
-
-```
-
 # Comparar a subjetividade de notícias e seus comentários
+
+
 ```{r}
-biasComments <- read_csv(here::here("data/bias_comments.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-biasComments[["url"]] <- biasComments[["url"]][0]
+biasComments <- read_csv(here::here("data/bias_comments.csv")) %>% 
+  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 
 biasComments <- biasComments %>% 
-  mutate(bias_comment = (1 - (arg + sen + val + pre + mod) / 4) * 100) %>% 
+  mutate(bias_comment = (1 - (arg + sen + val + pre + mod) / 5) * 100) %>% 
   select(url, bias_comment) %>% 
   group_by(url) %>% 
   summarise(bias_comment = mean(bias_comment))
 
 biasNews <- news %>% 
-  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 4) * 100) %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5) * 100) %>% 
   select(url, bias_news)
 
 
 all_bias <- merge(biasNews , biasComments, by = "url", all = FALSE) 
+
+all_bias %>%
+  ggplot(aes(x = bias_news, y = bias_comment)) +
+  geom_point() +
+  labs(title = "Bias news x Bias comments", x = "bias news", y = "bias comments")
+
+all_bias  %>% 
+  summarise(pearson = cor(bias_news, bias_comment, method = "pearson"), 
+            spearman = cor(bias_news, bias_comment, method = "spearman"), 
+            kendall = cor(bias_news, bias_comment, method = "kendall")
+            )
+        
 
 ```
 
@@ -340,23 +313,23 @@ all_bias <- merge(biasNews , biasComments, by = "url", all = FALSE)
 # Como é a distribuição das dimenssões
 
 ```{r}
-bxp_arg <- ggplot(data, aes(x = "", y = arg)) + 
+bxp_arg <- ggplot(news, aes(x = "", y = arg)) + 
   geom_boxplot(width = .5, outlier.color  = "red", outlier.alpha = .2) +
   labs( x = "valoração")
 
-bxp_sen <- ggplot(data, aes(x = "", y = sen)) + 
+bxp_sen <- ggplot(news, aes(x = "", y = sen)) + 
   geom_boxplot(width = .5, outlier.color  = "orange", outlier.alpha = .2) +
   labs( x = "sentimento")
 
-bxp_val <- ggplot(data, aes(x = "", y = val)) + 
+bxp_val <- ggplot(news, aes(x = "", y = val)) + 
   geom_boxplot(width = .5, outlier.color  = "yellow", outlier.alpha = .2) +
   labs( x = "argumentação")
 
-bxp_pre <- ggplot(data, aes(x = "", y = pre)) + 
+bxp_pre <- ggplot(news, aes(x = "", y = pre)) + 
   geom_boxplot(width = .5, outlier.color  = "green", outlier.alpha = .2) +
   labs( x = "pressuposição")
 
-bxp_mod <- ggplot(data, aes(x = "", y = mod)) + 
+bxp_mod <- ggplot(news, aes(x = "", y = mod)) + 
   geom_boxplot(width = .5, outlier.color  = "blue", outlier.alpha = .2) +
   labs( x = "mod")
 
@@ -365,11 +338,11 @@ ggarrange(bxp_arg, bxp_sen, bxp_val, bxp_pre, bxp_mod, labels = c("Arg", "Sen", 
 
 ```{r}
 highchart() %>% 
-  hc_add_series_boxplot(x = data$arg, outliers = FALSE, name = "arg") %>% 
-  hc_add_series_boxplot(x = data$sen, outliers = FALSE, name = "sen") %>% 
-  hc_add_series_boxplot(x = data$val, outliers = FALSE, name = "val") %>% 
-  hc_add_series_boxplot(x = data$pre, outliers = FALSE, name = "pre") %>% 
-  hc_add_series_boxplot(x = data$mod, outliers = FALSE, name = "mod")
+  hc_add_series_boxplot(x = news$arg, outliers = FALSE, name = "arg") %>% 
+  hc_add_series_boxplot(x = news$sen, outliers = FALSE, name = "sen") %>% 
+  hc_add_series_boxplot(x = news$val, outliers = FALSE, name = "val") %>% 
+  hc_add_series_boxplot(x = news$pre, outliers = FALSE, name = "pre") %>% 
+  hc_add_series_boxplot(x = news$mod, outliers = FALSE, name = "mod")
 
 ```
 
