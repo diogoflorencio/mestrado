@@ -17,6 +17,7 @@ editor_options: chunk_outp
 The objective of this notebook is to analyze the subjective bias of news from the main Brazilian newspapers.... 
 
 ```{r}
+options(warn=-1) # ignore warns
 require(GGally, quietly = TRUE)
 require(reshape2, quietly = TRUE)
 require(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
@@ -30,11 +31,9 @@ library(highcharter)
 library(lubridate)
 library(ggpubr)
 library(here)
-options(warn=-1) # ignore warns
 ```
 
-```{r}
-options(warn=-1) # ignore warns
+```{r message=FALSE, warning=FALSE}
 carta_capital <- read_csv(here::here("data/carta_capital.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 estadao <- read_csv(here::here("data/estadao.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 folha <- read_csv(here::here("data/folha.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
@@ -47,11 +46,10 @@ news <- rbind(carta_capital, estadao, folha, oantagonista, oglobo, veja)
 
 # Existe correlação entre as dimenssões de subjetividade?
 
-### Análise das distribuição das dimenssões por par 
+### Análise das distribuição das dimenssões par a par
 Ao analisar o plot par a par de cada dimenssão percebemos que todas as dimenssões possuem uma correlação positiva significante entre si, em especial `val x mod` e `pre x mod` possuem uma correlação mais forte. 
 
-```{r}
-options(warn=-1) # ignore warns
+```{r message=FALSE, warning=FALSE}
 news %>% 
     select(arg, sen, val, pre, mod) %>% 
     ggpairs()
@@ -63,7 +61,7 @@ news %>%
 Para avaliar a representatividade de cada dimenssão vamos reduzilas por meio da técnica PCA e comparar a variância acumulada nos PCAs com a variância total existente nos dados originais.
 O gráfico abaixo exibe a relação dessas variâncias, com 3 PC's quase 90% da informação original dos dados é representada.
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 pr.out <- prcomp(select(news, arg, sen, val, pre, mod), scale = FALSE)
 
 tidy(pr.out, "pcs") %>% 
@@ -93,7 +91,7 @@ autoplot(pr.out, data = news, size = 1,
 ### Definindo os cluters
 Pode-se definir o número de `clusters` do agrupamento por meio do calculo da distância quadrática entre o centro dos clusters, o centro dos dados e os dados. Aqui o centro dos dados é um ponto imaginário na média de todas as variáveis. O gráfico relaciona as variáveis `betweenss` e `totss`, essa proporção pode ser usada para definir um bom valor para o número de `clusters`. Quando a proporção para de crescer significativamente, aumentar os `clusters` não resulta numa melhor classificação. Neste caso, um bom valor para o número de `clusters` seria 4.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 set.seed(123)
 explorando_clusters = tibble(clusters = 1:15) %>% 
     group_by(clusters) %>% 
@@ -113,7 +111,7 @@ explorando_clusters %>%
 ### Interpretando os clusters
 O método de clustering utilizado foi o `k- means`, por meio da análise  dos agrupos podemos classificar os clusters. O `cluter 1` corresponde as notícias com menos viés de subjetividade, pois é o grupo que apresenta menor valor nas dimenssões. O `cluter 3` pode ser considerado o menos enviesado, por apresentar notícias com os maiores valores dimensionais.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 set.seed(123)
 
 n_clusters = 4
@@ -255,11 +253,23 @@ highchart() %>%
 
 ```
 
+# O tamanho das notícias variam ao longo do ano
+
+```{r}
+
+```
+
+# Relação entre subjetividade e tamanho do texto em uma notícia
+
+```{r}
+
+```
+
 # Existe relação entre tamanho do texto e quantidade de comentários
 
 Analisando o gráfico podemos perceber algum tipo de correlação, ao estimar os coeficientes de correlação percebemos que de fato existe uma correlação negativa não linear significativa entre as variáveis, ou seja, enquanto menor o texto mais comentários ele tende a ter.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 metaData <- read_csv(here::here("data/meta_data.csv")) %>% 
   filter(text_size <= 1000 & number_comments <= 1000) # remove outliers
 
@@ -275,21 +285,36 @@ metaData %>%
             )
 ```
 
-# Comparar a subjetividade de notícias e seus comentários
+# Existe correlação entre viés da notícia e popularidade? Isso muda de um caderno para outro?
+
+```{r}
+bias_pop <- merge(x = biasNews, y = metaData, all = TRUE)
+
+bias_pop %>%
+    ggplot(aes(x = bias_news, y = number_comments)) +
+    geom_point() +
+    labs(title = "Bias x Popularity", x = "bias", y = "popularity")
+
+bias_pop %>% 
+  summarise(pearson = cor(bias_news, number_comments, method = "pearson"), 
+            spearman = cor(bias_news, number_comments, method = "spearman"), 
+            kendall = cor(bias_news, number_comments, method = "kendall")
+            )
+```
+
+# Comparar a subjetividade das notícias e dos seus comentários
 
 ### Correlação entre bias de notícias e comentários
 
 Analisando o plot e os coeficientes estimados percebemos que não existe qualquer tipo de correlação entre as variáveis. 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 biasComments <- read_csv(here::here("data/bias_comments.csv")) %>% 
   filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 
 biasComments <- biasComments %>% 
   mutate(bias_comment = (1 - (arg + sen + val + pre + mod) / 5) * 100) %>% 
-  select(url, bias_comment) %>% 
-  group_by(url) %>% 
-  summarise(bias_comment = mean(bias_comment))
+  select(url, bias_comment) 
 
 biasNews <- news %>% 
   mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5) * 100) %>% 
@@ -316,7 +341,7 @@ all_bias  %>%
 
 Perbemos que a distribuição das notícias e mais concentrada e possui média maior do que a dos comentários.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 highchart() %>% 
   hc_yAxis(title = list(text = "Distribution of bias")) %>% 
   hc_add_series_boxplot(x = all_bias$bias_news, outliers = FALSE, name = "news") %>% 
@@ -354,7 +379,7 @@ ggarrange(bxp_arg, bxp_sen, bxp_val, bxp_pre, bxp_mod, labels = c("Arg", "Sen", 
   labs(title = "Distribution of bias for each dimension")
 ```
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 highchart() %>% 
   hc_yAxis(title = list(text = "Distribution of bias for each dimension")) %>% 
   hc_add_series_boxplot(x = news$arg, outliers = FALSE, name = "arg") %>% 
