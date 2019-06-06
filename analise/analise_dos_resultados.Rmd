@@ -253,18 +253,6 @@ highchart() %>%
 
 ```
 
-# O tamanho das notícias variam ao longo do ano
-
-```{r}
-
-```
-
-# Relação entre subjetividade e tamanho do texto em uma notícia
-
-```{r}
-
-```
-
 # Existe relação entre tamanho do texto e quantidade de comentários
 
 Analisando o gráfico podemos perceber algum tipo de correlação, ao estimar os coeficientes de correlação percebemos que de fato existe uma correlação negativa não linear significativa entre as variáveis, ou seja, enquanto menor o texto mais comentários ele tende a ter.
@@ -288,7 +276,12 @@ metaData %>%
 # Existe correlação entre viés da notícia e popularidade? Isso muda de um caderno para outro?
 
 ```{r}
-bias_pop <- merge(x = biasNews, y = metaData, all = TRUE)
+biasNews <- news %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5) * 100) %>% 
+  select(url, bias_news)
+
+bias_pop <- merge(x = biasNews, y = metaData, all = TRUE) %>% 
+            filter(!is.na(text_size), !is.na(number_comments), !is.na(bias_news))
 
 bias_pop %>%
     ggplot(aes(x = bias_news, y = number_comments)) +
@@ -299,6 +292,32 @@ bias_pop %>%
   summarise(pearson = cor(bias_news, number_comments, method = "pearson"), 
             spearman = cor(bias_news, number_comments, method = "spearman"), 
             kendall = cor(bias_news, number_comments, method = "kendall")
+            )
+```
+
+```{r}
+library(ggplot2)
+news <- merge(x = bias_pop, y = news, all = TRUE) %>% 
+            filter(!is.na(text_size), !is.na(number_comments), !is.na(bias_news))
+news %>% 
+    ggplot(aes(x = bias_news, y = number_comments, color = section)) +
+    geom_point() +
+    labs(title = "Bias x Popularity", x = "bias", y = "popularity") +
+  facet_grid(section ~ .)
+```
+
+# Relação entre subjetividade e tamanho do texto em uma notícia
+
+```{r}
+bias_pop %>%
+    ggplot(aes(x = bias_news, y = text_size)) +
+    geom_point() +
+    labs(title = "Bias x New Lenght", x = "bias", y = "new lenght")
+
+bias_pop %>% 
+  summarise(pearson = cor(bias_news, text_size, method = "pearson"), 
+            spearman = cor(bias_news, text_size, method = "spearman"), 
+            kendall = cor(bias_news, text_size, method = "kendall")
             )
 ```
 
@@ -388,5 +407,10 @@ highchart() %>%
   hc_add_series_boxplot(x = news$pre, outliers = FALSE, name = "pre") %>% 
   hc_add_series_boxplot(x = news$mod, outliers = FALSE, name = "mod")
 
+```
+
+```{r}
+library(koRpus)
+RIX("teste de texto", parameters = c(force.lang=NULL))
 ```
 
