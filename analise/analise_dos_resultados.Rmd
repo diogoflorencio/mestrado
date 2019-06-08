@@ -16,7 +16,7 @@ editor_options: chunk_outp
 
 The objective of this notebook is to analyze the subjective bias of news from the main Brazilian newspapers.... 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 options(warn=-1) # ignore warns
 require(GGally, quietly = TRUE)
 require(reshape2, quietly = TRUE)
@@ -409,8 +409,90 @@ highchart() %>%
 
 ```
 
+# peso
+
+```{r message=FALSE, warning=FALSE}
+readabilityMetrics <- read_csv(here::here("data/readability_metrics.csv"))
+readabilityMetrics <- merge(x = readabilityMetrics, y = news, all = TRUE)
+```
+
+# Bias news x Coleman Liau Index
+
 ```{r}
-library(koRpus)
-RIX("teste de texto", parameters = c(force.lang=NULL))
+readabilityMetrics %>%
+  ggplot(aes(x = bias_news, y = coleman_liau_index)) +
+  geom_point() +
+  labs(title = "Bias news x Coleman Liau Index", x = "bias news", y = "coleman liau index")
+
+readabilityMetrics  %>% 
+   filter(!is.na(bias_news), !is.na(coleman_liau_index)) %>% 
+  summarise(pearson = cor(bias_news, coleman_liau_index, method = "pearson"), 
+            spearman = cor(bias_news, coleman_liau_index, method = "spearman"), 
+            kendall = cor(bias_news, coleman_liau_index, method = "kendall")
+            )
+```
+
+# Bias news x Smog Index
+
+```{r}
+readabilityMetrics %>%
+  ggplot(aes(x = bias_news, y = smog_index)) +
+  geom_point() +
+  labs(title = "Bias news x Smog Index", x = "bias news", y = "smog index")
+
+readabilityMetrics  %>% 
+   filter(!is.na(bias_news), !is.na(smog_index)) %>% 
+  summarise(pearson = cor(bias_news, smog_index, method = "pearson"), 
+            spearman = cor(bias_news, smog_index, method = "spearman"), 
+            kendall = cor(bias_news, smog_index, method = "kendall")
+            )
+```
+
+# Bias news x Lix Index
+
+```{r}
+readabilityMetrics %>%
+  ggplot(aes(x = bias_news, y = lix_index)) +
+  geom_point() +
+  labs(title = "Bias news x Lix Index", x = "bias news", y = "lix index")
+
+readabilityMetrics  %>% 
+   filter(!is.na(bias_news), !is.na(lix_index)) %>% 
+  summarise(pearson = cor(bias_news, lix_index, method = "pearson"), 
+            spearman = cor(bias_news, lix_index, method = "spearman"), 
+            kendall = cor(bias_news, lix_index, method = "kendall")
+            )
+```
+
+# Bias news x Dale Chall Score
+
+```{r}
+readabilityMetrics %>%
+  ggplot(aes(x = bias_news, y = dale_chall_score)) +
+  geom_point() +
+  labs(title = "Bias news x Dale Chall Score", x = "bias news", y = "dale chall score")
+
+readabilityMetrics  %>% 
+   filter(!is.na(bias_news), !is.na(dale_chall_score)) %>% 
+  summarise(pearson = cor(bias_news, dale_chall_score, method = "pearson"), 
+            spearman = cor(bias_news, dale_chall_score, method = "spearman"), 
+            kendall = cor(bias_news, dale_chall_score, method = "kendall")
+            )
+```
+
+# Bias news x Dale Chall Known Fraction
+
+```{r}
+readabilityMetrics %>%
+  ggplot(aes(x = bias_news, y = dale_chall_known_fraction)) +
+  geom_point() +
+  labs(title = "Bias news x Dale Chall Known Fraction", x = "bias news", y = "dale chall known fraction")
+
+readabilityMetrics  %>% 
+   filter(!is.na(bias_news), !is.na(dale_chall_known_fraction)) %>% 
+  summarise(pearson = cor(bias_news, dale_chall_known_fraction, method = "pearson"), 
+            spearman = cor(bias_news, dale_chall_known_fraction, method = "spearman"), 
+            kendall = cor(bias_news, dale_chall_known_fraction, method = "kendall")
+            )
 ```
 
