@@ -246,6 +246,112 @@ highchart() %>%
   hc_add_series(name = "veja" , data = bias_veja$bias) 
 ```
 
+```{r}
+library(boot)
+
+repeticoes = 5000 # pelo menos 2000, mas mais não faz mal.
+um_bootstrap <- function(x){
+  bias = x %>% pull(bias)
+  boot_x <- sample(bias,           # amostre dos dados
+                   size = NROW(bias), # tamanho igual ao recebido
+                   replace = TRUE) # aqui é o bootstrap
+  return(mean(boot_x))
+}
+
+estadao <- estadao %>% 
+  mutate(bias = (1 - (arg + sen + val + pre + mod) / 5) * 100)
+
+theta_c = mean(estadao$bias)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(estadao)))
+
+ci_estadao = reamostragens %>% 
+  mutate(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+folha <- folha %>% 
+  mutate(bias = (1 - (arg + sen + val + pre + mod) / 5) * 100)
+
+theta_c = mean(folha$bias)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(folha)))
+
+ci_folha = reamostragens %>% 
+  mutate(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+oantagonista <- oantagonista %>% 
+  mutate(bias = (1 - (arg + sen + val + pre + mod) / 5) * 100)
+
+theta_c = mean(oantagonista$bias)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(oantagonista)))
+
+ci_oantagonista = reamostragens %>% 
+  mutate(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+oglobo <- oglobo %>% 
+  mutate(bias = (1 - (arg + sen + val + pre + mod) / 5) * 100)
+
+theta_c = mean(oglobo$bias)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(oglobo)))
+
+ci_oglobo = reamostragens %>% 
+  mutate(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+veja <- veja %>% 
+  mutate(bias = (1 - (arg + sen + val + pre + mod) / 5) * 100)
+
+theta_c = mean(veja$bias)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(veja)))
+
+ci_veja = reamostragens %>% 
+  mutate(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+```
+
+```{r}
+
+ci_amostragens <-bind_rows(
+    "estadao" = ci_estadao, 
+    "folha" = ci_folha, 
+    "oantagonista" = ci_oantagonista,
+    "veja" = ci_veja,
+    .id = "ci")
+
+
+ci_amostragens %>%
+    ggplot(aes(
+        x = "",
+        y = statistic,
+        ymin = conf.low,
+        ymax = conf.high,
+    )) + facet_grid(. ~ ci)+
+    geom_pointrange() +
+    geom_point(size = 3) + 
+    labs(x = "Código", 
+         y = "Proporção de novos artistas")
+```
 
 # Comparação de subjetividade entre notícias e sátiras
 
