@@ -80,19 +80,17 @@ spearman_ic <- metaData %>%
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
-kendall_ic <- metaData %>% 
-  bootstrap(cor(text_size, number_comments, method = "kendall"), 
-            R = 2000) %>% 
-    CI.percentile(probs = c(.025, .975))
+len_pop = data.frame(rbind(pearson_ic, spearman_ic))
 
-len_pop = data.frame(rbind(pearson_ic, spearman_ic, kendall_ic))
-
-len_pop$coef = c("pearson", "spearman", "kendall")
+len_pop$coef = c("pearson", "spearman")
 
 len_pop %>% 
   ggplot(aes(x = coef, ymin = X2.5., ymax = X97.5.)) + 
-  geom_errorbar(width = .2) +
-  labs(x = "", y = "percentual de subjetividade")
+  geom_errorbar(width = .2, color="blue") +
+  labs(title = "Relação legibilidade e popularidade",
+       subtitle = "Estimativa de correlação entre legibilidade e popularidade",
+       x = "", 
+       y = "")
 
 ```
 
@@ -161,7 +159,11 @@ subj_ci$jornal = c("estadao", "folha", "oantagonista", "veja")
 subj_ci %>% 
   ggplot(aes(x = jornal, ymin = X2.5., ymax = X97.5., color = jornal)) + 
   geom_errorbar(width = .2) +
-  labs(x = "", y = "percentual de subjetividade")
+  labs(title = "Subjetividade por jornal",
+       subtitle = "Estimativa de subjetividade por jornal",
+       x = "", 
+       y = "percentual de subjetividade") +
+  theme(legend.position = "none")
 
 ```
 
@@ -183,14 +185,9 @@ spearman_ic <- readabilityMetrics %>%
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
-kendall_ic <- readabilityMetrics %>% 
-  bootstrap(cor(bias_news, coleman_liau_index, method = "kendall"), 
-            R = 2000) %>% 
-    CI.percentile(probs = c(.025, .975))
+cor_coleman = data.frame(rbind(pearson_ic, spearman_ic))
 
-cor_coleman = data.frame(rbind(pearson_ic, spearman_ic, kendall_ic))
-
-cor_coleman$coef = c("pearson", "spearman", "kendall")
+cor_coleman$coef = c("pearson", "spearman")
 
 pearson_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, smog_index, method = "pearson"), 
@@ -202,14 +199,9 @@ spearman_ic <- readabilityMetrics %>%
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
-kendall_ic <- readabilityMetrics %>% 
-  bootstrap(cor(bias_news, smog_index, method = "kendall"), 
-            R = 2000) %>% 
-    CI.percentile(probs = c(.025, .975))
+cor_smog = data.frame(rbind(pearson_ic, spearman_ic))
 
-cor_smog = data.frame(rbind(pearson_ic, spearman_ic, kendall_ic))
-
-cor_smog$coef = c("pearson", "spearman", "kendall")
+cor_smog$coef = c("pearson", "spearman")
 
 pearson_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, lix_index, method = "pearson"), 
@@ -221,14 +213,9 @@ spearman_ic <- readabilityMetrics %>%
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
-kendall_ic <- readabilityMetrics %>% 
-  bootstrap(cor(bias_news, lix_index, method = "kendall"), 
-            R = 2000) %>% 
-    CI.percentile(probs = c(.025, .975))
+cor_lix = data.frame(rbind(pearson_ic, spearman_ic))
 
-cor_lix = data.frame(rbind(pearson_ic, spearman_ic, kendall_ic))
-
-cor_lix$coef = c("pearson", "spearman", "kendall")
+cor_lix$coef = c("pearson", "spearman")
 
 pearson_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, dale_chall_score, method = "pearson"), 
@@ -240,25 +227,30 @@ spearman_ic <- readabilityMetrics %>%
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
-kendall_ic <- readabilityMetrics %>% 
-  bootstrap(cor(bias_news, dale_chall_score, method = "kendall"), 
-            R = 2000) %>% 
-    CI.percentile(probs = c(.025, .975))
+cor_dale_chall = data.frame(rbind(pearson_ic, spearman_ic))
 
-cor_dale_chall = data.frame(rbind(pearson_ic, spearman_ic, kendall_ic))
-
-cor_dale_chall$coef = c("pearson", "spearman", "kendall")
+cor_dale_chall$coef = c("pearson", "spearman")
 
 read_ci <-bind_rows(
-    "cor_coleman" = cor_coleman,
-    "cor_smog" = cor_smog, 
-    "cor_lix" = cor_lix, 
-    "cor_dale_chall" = cor_dale_chall,
+    "coleman index" = cor_coleman,
+    "smog index" = cor_smog, 
+    "lix index" = cor_lix, 
+    "dale chall score" = cor_dale_chall,
     .id = "readability_metric")
+
+read_ci %>% 
+  ggplot(aes(x = coef, ymin = X2.5., ymax = X97.5., color = coef)) + 
+  geom_errorbar(width = .2) +
+  labs(title = "Relação subjetividade e legibilidade",
+       subtitle = "Estimativa de correlação entre subjetividade e legibilidade, considerando um ano de coleta",
+       x = "", 
+       y = "") +
+  facet_wrap( ~readability_metric) +
+  theme(legend.position = "none")
 
 ```
 
-6- Existe relação entre subjetividade e tamanho do texto em uma notícia?
+6- Existe relação entre subjetividade e tamanho do texto de uma notícia?
 
 ```{r}
 metaData <- read_csv(here::here("data/meta_data.csv")) %>% 
@@ -268,26 +260,25 @@ bias_pop <- merge(x = biasNews, y = metaData, all = TRUE) %>%
             filter(!is.na(text_size), !is.na(number_comments), !is.na(bias_news))
 
 pearson_ic <- bias_pop %>% 
-  bootstrap(cor(bias_news, number_comments, method = "pearson"), 
+  bootstrap(cor(bias_news, text_size, method = "pearson"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
 spearman_ic <- bias_pop %>% 
-  bootstrap(cor(bias_news, number_comments, method = "spearman"), 
+  bootstrap(cor(bias_news, text_size, method = "spearman"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
-kendall_ic <- bias_pop %>% 
-  bootstrap(cor(bias_news, number_comments, method = "kendall"), 
-            R = 2000) %>% 
-    CI.percentile(probs = c(.025, .975))
+subj_len = data.frame(rbind(pearson_ic, spearman_ic))
 
-subj_len = data.frame(rbind(pearson_ic, spearman_ic, kendall_ic))
-
-subj_len$coef = c("pearson", "spearman", "kendall")
+subj_len$coef = c("pearson", "spearman")
 
 subj_len %>% 
-  ggplot(aes(x = coef, ymin = X2.5., ymax = X97.5.)) + 
+  ggplot(aes(x = coef, ymin = X2.5., ymax = X97.5., color = coef)) + 
   geom_errorbar(width = .2) +
-  labs(x = "", y = "percentual de subjetividade")
+  labs(title = "Relação subjetividade e tamanho da notícia",
+       subtitle = "Estimativa de correlação entre subjetividade e tamanho da notícia, considerando um ano de coleta",
+       x = "", 
+       y = "") +
+  theme(legend.position = "none")
 ```
