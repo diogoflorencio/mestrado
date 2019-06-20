@@ -50,7 +50,7 @@ news <-bind_rows(
     .id = "jornal")
 ``` 
 
-1- Qual o jornal com maior legibilidade?
+# 1- Qual o jornal com maior legibilidade?
 
 ```{r message=FALSE, warning=FALSE}
 readabilityMetrics <- read_csv(here::here("data/readability_metrics.csv"))
@@ -64,7 +64,9 @@ readabilityMetrics <- readabilityMetrics %>%
 readabilityMetrics
 ```
 
-2- Existe relação entre tamanho do texto/legibilidade e popularidade(comentários)?
+# 2- Existe relação entre tamanho do texto/legibilidade e popularidade(comentários)?
+
+### Relação tamanho da notícia e popularidade
 
 ```{r}
 metaData <- read_csv(here::here("data/meta_data.csv")) %>% 
@@ -80,6 +82,11 @@ spearman_ic <- metaData %>%
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
+#kendall_ic <- metaData %>% 
+#  bootstrap(cor(text_size, number_comments, method = "kendall"), 
+#            R = 2000) %>% 
+#    CI.percentile(probs = c(.025, .975))
+
 len_pop = data.frame(rbind(pearson_ic, spearman_ic))
 
 len_pop$coef = c("pearson", "spearman")
@@ -87,14 +94,90 @@ len_pop$coef = c("pearson", "spearman")
 len_pop %>% 
   ggplot(aes(x = coef, ymin = X2.5., ymax = X97.5.)) + 
   geom_errorbar(width = .2, color="blue") +
-  labs(title = "Relação legibilidade e popularidade",
-       subtitle = "Estimativa de correlação entre legibilidade e popularidade",
-       x = "", 
+  labs(title = "Relação tamanho da notícia e popularidade",
+       subtitle = "Correlação entre o tamanho da notícia e sua popularidade",
+       x = "",
        y = "")
 
 ```
 
-3- Como é a distribuição das dimensões de subjetividade ao longo do ano?
+### Relação legibilidade da notícia e popularidade
+
+```{r}
+read_metaData <- merge(x = readabilityMetrics, y = metaData, all = TRUE) %>% filter(!is.na(jornal))
+
+pearson_ic <- read_metaData %>% 
+  bootstrap(cor(coleman_liau, number_comments, method = "pearson"), 
+            R = 2000) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+spearman_ic <- read_metaData %>% 
+  bootstrap(cor(coleman_liau, number_comments, method = "spearman"), 
+            R = 2000) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+coleman_pop = data.frame(rbind(pearson_ic, spearman_ic))
+coleman_pop$coef = c("pearson", "spearman")
+
+pearson_ic <- read_metaData %>% 
+  bootstrap(cor(smog_, number_comments, method = "pearson"), 
+            R = 2000) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+spearman_ic <- read_metaData %>% 
+  bootstrap(cor(smog_, number_comments, method = "spearman"), 
+            R = 2000) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+smog_pop = data.frame(rbind(pearson_ic, spearman_ic))
+smog_pop$coef = c("pearson", "spearman")
+
+pearson_ic <- read_metaData %>% 
+  bootstrap(cor(lix, number_comments, method = "pearson"), 
+            R = 2000) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+spearman_ic <- read_metaData %>% 
+  bootstrap(cor(lix, number_comments, method = "spearman"), 
+            R = 2000) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+lix_pop = data.frame(rbind(pearson_ic, spearman_ic))
+lix_pop$coef = c("pearson", "spearman")
+
+pearson_ic <- read_metaData %>% 
+  bootstrap(cor(dale_chall, number_comments, method = "pearson"), 
+            R = 2000) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+spearman_ic <- read_metaData %>% 
+  bootstrap(cor(dale_chall, number_comments, method = "spearman"), 
+            R = 2000) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+dale_chall_pop = data.frame(rbind(pearson_ic, spearman_ic))
+dale_chall_pop$coef = c("pearson", "spearman")
+
+
+read_pop_ci <-bind_rows(
+    "coleman index" = coleman_pop,
+    "smog index" = smog_pop, 
+    "lix index" = lix_pop, 
+    "dale chall score" = dale_chall_pop,
+    .id = "readability_metric")
+
+read_pop_ci %>% 
+  ggplot(aes(x = coef, ymin = X2.5., ymax = X97.5., color = coef)) + 
+  geom_errorbar(width = .2) +
+  labs(title = "Relação legibilidade da notícia e popularidade",
+       subtitle = "Correlação entre a legibilidade da notícia e sua popularidade",
+       x = "",
+       y = "") +
+  facet_wrap( ~readability_metric) +
+  theme(legend.position = "none")
+```
+
+# 3- Como é a distribuição das dimensões de subjetividade ao longo do ano?
 
 ```{r}
 bias_month <- news %>%
@@ -120,7 +203,7 @@ highchart() %>%
   hc_add_series(name = "mod" , data = (bias_month$mod))
 ```
 
-4- Qual o jornal mais subjetivo (considerando todas as notícias em um ano de coleta)?
+# 4- Qual o jornal mais subjetivo (considerando todas as notícias em um ano de coleta)?
 
 ```{r}
 biasNews <- news %>% 
@@ -159,85 +242,67 @@ subj_ci$jornal = c("estadao", "folha", "oantagonista", "veja")
 subj_ci %>% 
   ggplot(aes(x = jornal, ymin = X2.5., ymax = X97.5., color = jornal)) + 
   geom_errorbar(width = .2) +
-  labs(title = "Subjetividade por jornal",
-       subtitle = "Estimativa de subjetividade por jornal",
+  labs(title = "Percentual de subjetividade por jornal",
+       subtitle = "Estimativa de subjetividade considerando todas as notícias em um ano de coleta",
        x = "", 
-       y = "percentual de subjetividade") +
+       y = "") +
   theme(legend.position = "none")
 
 ```
 
-5- Existe relação entre subjetividade de legibilidade do texto em uma notícia?
+# 5- Existe relação entre subjetividade de legibilidade do texto em uma notícia?
 
 ```{r}
 readabilityMetrics <- read_csv(here::here("data/readability_metrics.csv"))
 readabilityMetrics <- merge(x = readabilityMetrics, y = news, all = TRUE) %>% filter(!is.na(jornal))
 readabilityMetrics <- readabilityMetrics %>% 
   mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5) * 100)
-
 pearson_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, coleman_liau_index, method = "pearson"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
-
 spearman_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, coleman_liau_index, method = "spearman"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
-
 cor_coleman = data.frame(rbind(pearson_ic, spearman_ic))
-
 cor_coleman$coef = c("pearson", "spearman")
-
 pearson_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, smog_index, method = "pearson"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
-
 spearman_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, smog_index, method = "spearman"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
-
 cor_smog = data.frame(rbind(pearson_ic, spearman_ic))
-
 cor_smog$coef = c("pearson", "spearman")
-
 pearson_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, lix_index, method = "pearson"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
-
 spearman_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, lix_index, method = "spearman"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
-
 cor_lix = data.frame(rbind(pearson_ic, spearman_ic))
-
 cor_lix$coef = c("pearson", "spearman")
-
 pearson_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, dale_chall_score, method = "pearson"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
-
 spearman_ic <- readabilityMetrics %>% 
   bootstrap(cor(bias_news, dale_chall_score, method = "spearman"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
-
 cor_dale_chall = data.frame(rbind(pearson_ic, spearman_ic))
-
 cor_dale_chall$coef = c("pearson", "spearman")
-
 read_ci <-bind_rows(
     "coleman index" = cor_coleman,
     "smog index" = cor_smog, 
     "lix index" = cor_lix, 
     "dale chall score" = cor_dale_chall,
     .id = "readability_metric")
-
 read_ci %>% 
   ggplot(aes(x = coef, ymin = X2.5., ymax = X97.5., color = coef)) + 
   geom_errorbar(width = .2) +
@@ -247,10 +312,9 @@ read_ci %>%
        y = "") +
   facet_wrap( ~readability_metric) +
   theme(legend.position = "none")
-
 ```
 
-6- Existe relação entre subjetividade e tamanho do texto de uma notícia?
+# 6- Existe relação entre subjetividade e tamanho do texto em uma notícia?
 
 ```{r}
 metaData <- read_csv(here::here("data/meta_data.csv")) %>% 
@@ -260,12 +324,12 @@ bias_pop <- merge(x = biasNews, y = metaData, all = TRUE) %>%
             filter(!is.na(text_size), !is.na(number_comments), !is.na(bias_news))
 
 pearson_ic <- bias_pop %>% 
-  bootstrap(cor(bias_news, text_size, method = "pearson"), 
+  bootstrap(cor(bias_news, number_comments, method = "pearson"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
 spearman_ic <- bias_pop %>% 
-  bootstrap(cor(bias_news, text_size, method = "spearman"), 
+  bootstrap(cor(bias_news, number_comments, method = "spearman"), 
             R = 2000) %>% 
     CI.percentile(probs = c(.025, .975))
 
@@ -277,7 +341,7 @@ subj_len %>%
   ggplot(aes(x = coef, ymin = X2.5., ymax = X97.5., color = coef)) + 
   geom_errorbar(width = .2) +
   labs(title = "Relação subjetividade e tamanho da notícia",
-       subtitle = "Estimativa de correlação entre subjetividade e tamanho da notícia, considerando um ano de coleta",
+       subtitle = "Estimativa de correlação entre subjetividade  e tamanho da notícia",
        x = "", 
        y = "") +
   theme(legend.position = "none")
