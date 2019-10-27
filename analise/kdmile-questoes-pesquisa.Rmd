@@ -1,0 +1,325 @@
+---
+title: "An Analysis of Subjectivity in Brazilian News - KDMILe 2019"
+output: 
+  html_notebook:
+    theme: lumen
+    fig_width: 7
+    toc: true
+    toc_float: true
+    code_folding: hide
+editor_options: 
+  chunk_output_type: inline
+---
+
+Este notebook implementa a análise realizada no artigo An Analysis of Subjectivity in Brazilian News publicado no KDMILe- 2019. Para guiar a pesquisa, são definidas $4$ questões de pesquisa (QP) apresentadas a seguir. Acreditamos que o método usado, juntamente com as respostas obtidas a essas questões, contribuem para um melhor entendimento sobre as características linguísticas das notícias que consumimos diariamente.
+
+A validação do método utilizado para estimava de subjetividade por ser encontrada no artigo. Todos os resultados dos experimentos a seguir são retratadospor intervalos com95%de confiança estimados a partir de2000re-amostragens de tamanho aleatório,computadas por meio debootstrapingcom reposição.
+
+```{r message=FALSE, warning=FALSE}
+options(warn=-1) # ignore warns
+require(GGally, quietly = TRUE)
+require(reshape2, quietly = TRUE)
+require(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
+library(ggfortify)
+library(cluster)
+library(broom)
+library(tidyverse)
+library(plotly)
+library(resample)
+library(lubridate)
+library(ggpubr)
+library(here)
+```
+
+## Os dados
+Foram coletadas notícias e comentários dos cadernos de esporte e política dos portais Estadão, Folha de São Paulo,O Antagonista,O Globo e Veja durante o período de janeiro à dezembro de 2018. Em 2018, os cadernos de esporte e política cobriram eventos como a copa do mundo de futebolmasculino7e as eleições presidenciais brasileiras8, momentos especialmente interessantes de seremanalisados devido a uma maior tendencia das notícias serem apresentadas de forma mais subjetiva,de acordo com o posicionamento esportivo/político do seu editor.
+
+```{r message=FALSE, warning=FALSE}
+#carta_capital <- read_csv(here::here("data/carta_capital.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+estadao <- read_csv(here::here("data/estadao.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0) 
+folha <- read_csv(here::here("data/folha.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0) 
+oantagonista <- read_csv(here::here("data/oantagonista.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oglobo <- read_csv(here::here("data/oglobo.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0) 
+veja <- read_csv(here::here("data/veja.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+news <-bind_rows(
+    #"carta_capital" = carta_capital,
+    "estadao" = estadao, 
+    "folha" = folha, 
+    "oantagonista" = oantagonista,
+    "oglobo" = oglobo,
+    "veja" = veja,
+    .id = "jornal")
+
+readabilityMetrics <- read_csv(here::here("data/readability_metrics.csv"))
+
+metaData <- read_csv(here::here("data/meta_data.csv")) %>% 
+  filter(text_size <= 1000 & number_comments <= 1000) # remove outliers
+``` 
+
+# QP1: Como se comparam os níveis de subjetividade entre os jornais considerados?
+
+A gráfico abaixo retrata o intervalo de confiança do percentual médio de subjetividade para cada portal.
+```{r}
+biasNews <- news %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+  select(jornal, url, bias_news)
+
+resamples = 2000
+
+subj_estadao <- biasNews %>% 
+  filter(jornal == "estadao") %>% 
+  bootstrap(median(bias_news), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+
+subj_folha <- biasNews %>% 
+  filter(jornal == "folha") %>% 
+  bootstrap(median(bias_news), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+subj_oantagonista <- biasNews %>% 
+  filter(jornal == "oantagonista") %>% 
+  bootstrap(median(bias_news), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+subj_oglobo <- biasNews %>% 
+  group_by(jornal == "oglobo") %>% 
+  bootstrap(median(bias_news), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+subj_veja <- biasNews %>% 
+  group_by(jornal == "veja") %>% 
+  bootstrap(median(bias_news), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+subj_ci = data.frame(rbind(subj_estadao, subj_folha, subj_oantagonista, subj_oglobo, subj_veja))
+
+subj_ci$jornal = c("estadao", "folha", "oantagonista", "oglobo", "veja")
+```
+
+```{r}
+qp1 <- subj_ci %>% 
+  ggplot(aes(x = jornal, ymin = X2.5., ymax = X97.5., color = jornal)) + 
+  geom_errorbar(width = .4) +
+  labs(title = "Percentual de subjetividade por portal",
+       #subtitle = "Estimativa de subjetividade considerando todas as notícias de 2018",
+       x = "", 
+       y = "") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(legend.position="none", 
+        axis.text=element_text(size=14),
+        plot.title = element_text(size=18)
+        )
+qp1
+#ggsave("pp1.png", width = 6, height = 4)
+```
+
+`O Antagonista` é o portal com maior índice de subjetividade e, por se tratar de um portal que possui alinhamento político declarado (direita), esse resultado condiz com o esperado. Em seguida, `Veja` e `O Globo` são retratados com valores de subjetividade similares, sem apresentarem diferença significativa. Por último, `Estadão` e `Folha de São Paulo` manifestam, respectivamente, os menores índices de subjetividade.
+
+# QP2: Há correlação entre subjetividade e legibilidade?
+
+A legibilidade de um texto diz respeito à sua qualidade tipográfica, refletindo em sua facilidade deleitura. Este experimento estima a correlação de Spearman entre subjetividade e $4$ métricas estado-da-arte: `Coleman Liau Index`, `Smog Index`, `Lix Index` e `Dale Chall Score`. Os resultados são retratados a seguir.
+
+```{r}
+readabilityMetrics <- merge(x = readabilityMetrics, y = news, all = TRUE) %>% filter(!is.na(jornal))
+readabilityMetrics <- readabilityMetrics %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5) * 100)
+
+coleman <- readabilityMetrics %>% 
+  bootstrap(cor(bias_news, coleman_liau_index, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+smog <- readabilityMetrics %>% 
+  bootstrap(cor(bias_news, smog_index, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+lix <- readabilityMetrics %>% 
+  bootstrap(cor(bias_news, lix_index, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+dale <- readabilityMetrics %>% 
+  bootstrap(cor(bias_news, dale_chall_score, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+read_ci = data.frame(rbind(coleman, smog, lix, dale))
+read_ci$coef = c("coleman index", "smog index", "lix index", "dale chall score")
+```
+
+```{r}
+qp2 <- read_ci %>% 
+  ggplot(aes(x = coef, ymin = X2.5., ymax = X97.5., color = coef)) + 
+  geom_errorbar(width = .4) +
+  labs(title = "Relação entre subjetividade e legibilidade",
+       #subtitle = "Estimativa considerando todas as notícias de 2018",
+       x = "", 
+       y = "") +
+  theme_bw() +
+  theme(legend.text=element_text(size=14),
+        axis.text=element_text(size=14),
+        plot.title = element_text(size=18),
+        legend.title=element_blank(),
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+qp2
+#ggsave("pp2.png", width = 6, height = 4)
+```
+
+```{r}
+ggarrange(qp1, qp2, 
+          labels = c("A", "B"),
+          ncol = 2)
+#ggsave("fig2-3.pdf", width = 12, height = 4)
+```
+
+Para qualquer métrica de legibilidade, os intervalos estimados são próximos de $0$. Ou seja, a correlação existente entre as variáveis é desprezível. Com isso temos indícios de que a subjetividade de uma notícia independe de sua legibilidade.
+
+# QP3: Há correlação entre subjetividade e tamanho da notícia
+
+Neste experimento é verificando a correlação entre o tamanho da notícia e sua subjetividade. Aqui o interesse é analisar se a estimativa de subjetividade de uma notícia pode ser influenciada por seu tamanho. O gráfico exibe o intervalo de confiança estimado do coeficiente de correlação de `Spearman` entre as variáveis tamanho do texto e popularidade da notícia para cada portal. 
+
+```{r}
+estadao_len <- readabilityMetrics %>% 
+  filter(jornal == "estadao") %>% 
+  bootstrap(cor(bias_news, words, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+folha_len <- readabilityMetrics %>% 
+  filter(jornal == "folha") %>% 
+  bootstrap(cor(bias_news, words, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+oantagonista_len <- readabilityMetrics %>% 
+  filter(jornal == "oantagonista") %>% 
+  bootstrap(cor(bias_news, words, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+oglobo_len <- readabilityMetrics %>% 
+  filter(jornal == "oglobo") %>% 
+  bootstrap(cor(bias_news, words, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+veja_len <- readabilityMetrics %>% 
+  filter(jornal == "veja") %>% 
+  bootstrap(cor(bias_news, words, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+subj_len = data.frame(rbind(estadao_len, folha_len, oantagonista_len, oglobo_len, veja_len))
+subj_len$portal = c("estadao", "folha", "oantagonista", "oglobo", "veja")
+
+```
+
+```{r}
+qp3 <- subj_len %>% 
+  ggplot(aes(x = portal, ymin = X2.5., ymax = X97.5., color = portal)) + 
+  geom_errorbar(width = .4) +
+  labs(title = "Relação entre  subjetividade e tamanho da notícia",
+       #subtitle = "Estimativa de correlação entre subjetividade e legibilidade considerando um ano de coleta",
+       x = "", 
+       y = "") +
+  theme_bw() +
+  theme(legend.position="none", axis.text=element_text(size=14),
+         plot.title = element_text(size=18)
+        ) 
+
+qp3
+#ggsave("pp3.png", width = 6.3, height = 4)
+```
+
+O portal `O Antagonista` apresenta correlação positiva entre tamanho e subjetividade enquanto os demais portais apresentam correlações negativas. Dentre os resultados, destacam-se os valores de correlação da `Folha de São Paulo`, `Estadão` e `O Globo`, com valores aproximados de $-0.75$, o que pode ser considerado uma correlação negativa forte, isso mostra uma tendência de que notícias menores são mais subjetivas.
+
+# QP4: Há correlação entre subjetividade e popularidade?
+
+Por fim, este experimento analisa a existência de correção entre subjetividade e popularidade. Aqui, estamos interessados em investigar se notícias mais subjetivas são mais populares, o que pode estar relacionado ao apelo à emoção e/ou técnicas de persuasão comumente empregadas para influenciar os leitores. A visualização abaixo exibe o intervalo de confiança estimado do coeficiente de correlação de `Spearman` por portal. Todos os portais apresentam intervalo próximo de $0$. Assim, há indícios de que a popularidade de uma notícia independe de sua subjetividade.
+```{r}
+metaData <- merge(x = news, y = metaData, all = TRUE) %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5) * 100) %>% filter(!is.na(jornal), !is.na(number_comments))
+
+estadao_pop <- metaData %>% 
+  filter(jornal == "estadao" | jornal == "oglobo") %>% 
+  bootstrap(cor(bias_news, number_comments, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+folha_pop <- metaData %>% 
+  filter(jornal == "folha" | jornal == "oglobo") %>% 
+  bootstrap(cor(bias_news, number_comments, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+oantagonista_pop <- metaData %>% 
+  filter(jornal == "oantagonista") %>% 
+  bootstrap(cor(bias_news, number_comments, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+oglobo_pop <- metaData %>% 
+  filter(jornal == "oglobo") %>% 
+  bootstrap(cor(bias_news, number_comments, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+veja_pop <- metaData %>% 
+  filter(jornal == "veja") %>% 
+  bootstrap(cor(bias_news, number_comments, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+bias_pop = data.frame(rbind(estadao_pop, folha_pop, oantagonista_pop, oglobo_pop, veja_pop))
+
+bias_pop$portal = c("estadao", "folha", "oantagonista", "oglobo", "veja")
+```
+
+```{r}
+qp4 <- bias_pop %>% 
+  ggplot(aes(x = portal, ymin = X2.5., ymax = X97.5., color=portal)) + 
+  geom_errorbar(width = .4) +
+  labs(title = "Relação entre subjetividade e popularidade",
+       #subtitle = "Correlação entre o tamanho da notícia e sua popularidade",
+       x = "",
+       y = "") + 
+  theme_bw() +
+  theme(legend.position="none", 
+        axis.text=element_text(size=14),
+        plot.title = element_text(size=18)) +
+  scale_y_continuous(limits = c(0, .1))
+
+qp4
+#ggsave("pp4.png", width = 6, height = 4)
+```
+
+```{r}
+ggarrange(qp3, qp4, 
+          labels = c("A", "B"),
+          ncol = 2)
+
+#ggsave("fig4-5.pdf", width = 12, height = 4)
+```
+
+# Conclusões e Trabalhos Futuros
+
+É senso comum a percepção de que alguns jornais são mais enviesados que outros na forma de expor os fatos. Notícias com maior subjetividade podem gerar marcas singulares na opinião dos leitores e até mesmo na construção de crenças e valores compartilhados pela opinião pública. 
+
+Neste artigo, realizamos uma análise de subjetividade em notícias de $5$ portais de notícias brasileiros: `Estadão`, `Folha de São Paulo` e `O Globo`, portais mainstream; `O Antagonista` e `Veja`,  portais com posições ideológicas declaradas. Relacionamos subjetividade a diferentes aspectos da notícia através da aplicação de métodos estado-da-arte (p.ex. tamanho, legibilidade e popularidade). Nossas principais descobertas são:
+
+* `O Antagonista` e `Veja` foram classificados como os portais mais subjetivos. Intuitivamente, este é o resultado esperado, já que são portais com alinhamento político declarado, o que nos dá mais indícios sobre a eficácia do método introduzido;
+* O percentual de subjetividade de uma notícia independe da clareza de seu texto e também não impacta em sua popularidade;
+* Os resultados mostram evidências de que notícias menores tendem a ser mais subjetivas. Isso pode estar associado à motivação da notícia, intuitivamente notícias que tem por objetivo informar se preocupam em fornecer mais detalhes sobre o fato noticiado, resultando em maior clareza ao leitor.
+
+Em trabalhos futuros, pretendemos incluir mais portais de notícias (p.ex. Carta Capital) afim de cobrir todos os posicionamentos do espectro politico-ideológico. Também pretendemos estender validar nossa abordagem em outros gêneros textuais. Além disso, pretendemos incluir nossas descobertas como features em um sistema de recomendação de notícias, buscando reduzir a subjetividade das notícias recomendadas.
