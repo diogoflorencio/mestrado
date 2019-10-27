@@ -1,0 +1,7 @@
+{
+	"mundo": "https://oglobo.globo.com/api/v1/vermais/mundo/conteudo.json?pagina=0&versao=v1", 
+	"sociedade": "https://oglobo.globo.com/api/v1/vermais/sociedade/conteudo.json?pagina=0&versao=v1", 
+	"cultura": "https://oglobo.globo.com/api/v1/vermais/cultura/conteudo.json?pagina=0&versao=v1", 
+	"pais": "https://oglobo.globo.com/api/v1/vermais/pais/conteudo.json?pagina=0&versao=v1", 
+	"economia": "https://oglobo.globo.com/api/v1/vermais/economia/conteudo.json?pagina=0&versao=v1"
+}
