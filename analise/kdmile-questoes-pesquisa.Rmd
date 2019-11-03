@@ -177,9 +177,9 @@ qp2
 ```
 
 ```{r}
-ggarrange(qp1, qp2, 
-          labels = c("A", "B"),
-          ncol = 2)
+#ggarrange(qp1, qp2, 
+#          labels = c("A", "B"),
+#          ncol = 2)
 #ggsave("fig2-3.pdf", width = 12, height = 4)
 ```
 
@@ -305,9 +305,9 @@ qp4
 ```
 
 ```{r}
-ggarrange(qp3, qp4, 
-          labels = c("A", "B"),
-          ncol = 2)
+#ggarrange(qp3, qp4, 
+#          labels = c("A", "B"),
+#          ncol = 2)
 
 #ggsave("fig4-5.pdf", width = 12, height = 4)
 ```
