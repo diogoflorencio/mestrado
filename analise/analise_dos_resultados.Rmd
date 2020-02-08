@@ -38,7 +38,7 @@ carta_capital <- read_csv(here::here("data/carta_capital.csv")) %>% filter(arg >
 estadao <- read_csv(here::here("data/estadao.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 folha <- read_csv(here::here("data/folha.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 oantagonista <- read_csv(here::here("data/oantagonista.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-oglobo <- read_csv(here::here("data/oglobo.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oglobo <- read_csv(here::here("data/oglobo.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0) %>% select(-X1, -text, -title, -sub_title, -author )
 veja <- read_csv(here::here("data/veja.csv")) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 
 news <- rbind(carta_capital, estadao, folha, oantagonista, oglobo, veja)

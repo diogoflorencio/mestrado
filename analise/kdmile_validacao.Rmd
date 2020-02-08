@@ -1,0 +1,304 @@
+---
+title: "Validação"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r message=FALSE, warning=FALSE}
+options(warn=-1) # ignore warns
+require(GGally, quietly = TRUE)
+require(reshape2, quietly = TRUE)
+require(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
+library(ggfortify)
+library(cluster)
+library(broom)
+library(tidyverse)
+library(plotly)
+library(resample)
+library(lubridate)
+library(ggpubr)
+library(here)
+library(highcharter)
+library(mongolite)
+```
+
+## Corregando dados
+
+```{r message=FALSE, warning=FALSE}
+carta_capital <- mongo("carta_capital", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+el_pais <- mongo("el_pais", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+estadao <- mongo("estadao", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+folha <- mongo("folha", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+gazeta_do_povo <- mongo("gazeta_do_povo", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oantagonista <- mongo("oantagonista", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oglobo <- mongo("oglobo", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+veja <- mongo("veja", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+```
+
+## Validação
+
+```{r}
+set.seed(1212)
+
+repeticoes = 5000 # pelo menos 2000, mas mais não faz mal.
+
+um_bootstrap <- function(x){
+  opinativo <- x %>% filter(type_news == "opinativo") %>% pull(bias_news)
+  boot_opinativo <- sample(opinativo,           # amostre dos dados
+                   size = NROW(opinativo), # tamanho igual ao recebido
+                   replace = TRUE) # aqui é o bootstrap
+  
+  informativo <- x %>% filter(type_news == "informativo") %>% pull(bias_news)
+  boot_informativo <- sample(informativo,           # amostre dos dados
+                   size = NROW(informativo), # tamanho igual ao recebido
+                   replace = TRUE) # aqui é o bootstrap
+  
+  return(mean(boot_opinativo) - mean(boot_informativo))
+}
+
+# definindo portal para população 
+pop <- carta_capital %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao"), "opinativo", "informativo")) %>% 
+  filter(!is.na(type_news))
+
+theta_c = pop %>% group_by(type_news) %>% 
+        summarise(media = mean(bias_news))
+
+theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
+
+ci_carta = reamostragens %>% 
+  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+# definindo portal para população 
+pop <- el_pais %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao"), "informativo", "opinativo")) %>% 
+  filter(!is.na(type_news))
+
+theta_c = pop %>% group_by(type_news) %>% 
+        summarise(media = mean(bias_news))
+
+theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
+
+ci_elpais = reamostragens %>% 
+  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+# definindo portal para população 
+pop <- estadao %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao"), "opinativo", "informativo")) %>% 
+  filter(!is.na(type_news))
+
+theta_c = pop %>% group_by(type_news) %>% 
+        summarise(media = mean(bias_news))
+
+theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
+
+ci_estadao = reamostragens %>% 
+  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+# definindo portal para população 
+pop <- folha %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao"), "opinativo", "informativo")) %>% 
+  filter(!is.na(type_news))
+
+theta_c = pop %>% group_by(type_news) %>% 
+        summarise(media = mean(bias_news))
+
+theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
+
+ci_folha = reamostragens %>% 
+  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+# definindo portal para população 
+pop <- gazeta_do_povo %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao"), "opinativo", "informativo")) %>% 
+  filter(!is.na(type_news))
+
+theta_c = pop %>% group_by(type_news) %>% 
+        summarise(media = mean(bias_news))
+
+theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
+
+ci_gazeta = reamostragens %>% 
+  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+# definindo portal para população 
+pop <- oantagonista %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao"), "opinativo", "informativo")) %>% 
+  filter(!is.na(type_news))
+
+theta_c = pop %>% group_by(type_news) %>% 
+        summarise(media = mean(bias_news))
+
+theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
+
+ci_oantagonista = reamostragens %>% 
+  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+# definindo portal para população 
+pop <- oglobo %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao", "brasil", "mundo"),"informativo", "opinativo")) %>% 
+  filter(!is.na(type_news))
+
+theta_c = pop %>% group_by(type_news) %>% 
+        summarise(media = mean(bias_news))
+
+theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
+
+ci_oglobo = reamostragens %>% 
+  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+# definindo portal para população 
+pop <- veja %>% 
+  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao"), "opinativo", "informativo")) %>% 
+  filter(!is.na(type_news))
+
+theta_c = pop %>% group_by(type_news) %>% 
+        summarise(media = mean(bias_news))
+
+theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
+
+# A REAMOSTRAGEM
+reamostragens = tibble(i = 1:repeticoes) %>% 
+  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
+
+ci_veja = reamostragens %>% 
+  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+         statistic = theta_c)
+
+ci_portais = data.frame(rbind(ci_carta, ci_elpais, ci_estadao, ci_folha, ci_gazeta, ci_oantagonista, ci_oglobo, ci_veja))
+
+ci_portais$portal = c("carta_capital", "el_pais", "estadao", "folha", "gazeta", "oantagonista", "oglobo", "veja")
+
+a <- ci_portais %>% 
+  ggplot(aes(x = portal, ymin = conf.low, ymax = conf.high, color =  portal)) + 
+  geom_errorbar(width = .8, size=.8) +
+  labs(#title = "Diferença média de subjetividade",
+#       subtitle = "Estimativa da diferença média entre notícias opinativas e informativas",
+       x = "", 
+       y = "") +
+  scale_y_continuous(labels = scales::percent) +
+  theme(legend.position = "none") +
+  theme_bw() +
+  theme(legend.position="none", 
+        axis.text=element_text(size=14)) +
+  coord_flip()
+
+a
+
+#ggsave("validacao.pdf", width = 6, height = 4)
+```
+
+## Como se compararam a subjetividade entre os portais com posicionamento político definido e não definido ?
+
+```{r}
+pos_pol <- bind_rows(
+    "definido" = carta_capital,
+    "indefinido" = el_pais,
+    "indefinido" = estadao, 
+    "indefinido" = folha, 
+    "indefinido" = gazeta_do_povo,
+    "definido" = oantagonista,
+    "indefinido" = oglobo,
+    "definido" = veja,
+    .id = "posicionamento_politico") %>% 
+    mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+    select(posicionamento_politico, bias_news)
+
+resamples = 2000
+
+subj_def <- pos_pol %>% 
+  filter(posicionamento_politico == "definido") %>% 
+  bootstrap(median(bias_news), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+subj_indef <- pos_pol %>% 
+  filter(posicionamento_politico == "indefinido") %>% 
+  bootstrap(median(bias_news), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+subj_ci = data.frame(rbind(subj_def, subj_indef))
+
+subj_ci$jornal = c("declarado", "não declarado")
+```
+
+```{r}
+qp1 <- subj_ci %>% 
+  ggplot(aes(x = jornal, ymin = X2.5., ymax = X97.5., color = jornal)) + 
+  geom_errorbar(width = .5, size = .8) +
+  labs(#title = "Percentual de subjetividade por portal",
+       #subtitle = "Estimativa de subjetividade considerando todas as notícias de 2018",
+       x = "", 
+       y = "") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw() +
+  theme(legend.position="none", 
+        axis.text=element_text(size=14),
+        plot.title = element_text(size=18)
+        )
+qp1
+#ggsave("pp1.png", width = 6, height = 4)
+```
+
+```{r}
+ggarrange(a, qp1, 
+          labels = c("A", "B"),
+          ncol = 2)
+ggsave("fig0-1.pdf", width = 12, height = 4)
+```
+
