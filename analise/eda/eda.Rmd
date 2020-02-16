@@ -1,0 +1,151 @@
+---
+title: "Descriptive and Exploratory Data Analysis"
+output: 
+  html_notebook:
+    theme: lumen
+    fig_width: 7
+    toc: true
+    toc_float: true
+    code_folding: hide
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r message=TRUE, warning=TRUE}
+library(tidyverse)
+library(mongolite)
+library(lubridate)
+library(highcharter)
+library(gridExtra)
+
+HOST_IP = "mongodb://192.168.1.6:27017/news_2018"
+```
+
+
+```{r load news}
+carta_capital <- mongo("carta_capital", url = HOST_IP)$find() %>% 
+  select(url, date, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+el_pais <- mongo("el_pais", url = HOST_IP)$find() %>% 
+  select(url, date, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+estadao <- mongo("estadao", url = HOST_IP)$find() %>% 
+  select(url, date, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+folha <- mongo("folha", url = HOST_IP)$find() %>% 
+  select(url, date, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+gazeta_do_povo <- mongo("gazeta_do_povo", url = HOST_IP)$find() %>% 
+  select(url, date, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+oantagonista <- mongo("oantagonista", url = HOST_IP)$find() %>% 
+  select(url, date, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+oglobo <- mongo("oglobo", url = HOST_IP)$find() %>% 
+  select(url, date, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+veja <- mongo("veja", url = HOST_IP)$find() %>% 
+  select(url, date, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+# convert date type
+carta_capital$date <- as.numeric(as.character(carta_capital$date))
+el_pais$date <- as.numeric(as.character(el_pais$date))
+estadao$date <- as.numeric(as.character(estadao$date))
+folha$date <- as.numeric(as.character(folha$date))
+gazeta_do_povo$date <- as.numeric(as.character(gazeta_do_povo$date))
+oantagonista$date <- as.numeric(as.character(oantagonista$date))
+oglobo$date <- as.numeric(as.character(oglobo$date))
+veja$date <- as.numeric(as.character(veja$date))
+
+# concat news
+news <-bind_rows(
+    "carta_capital" = carta_capital,
+    "el_pais" = el_pais,
+    "estadao" = estadao, 
+    "folha" = folha, 
+    "gazeta_do_povo" = gazeta_do_povo,
+    "oantagonista" = oantagonista,
+    "oglobo" = oglobo,
+    "veja" = veja,
+    .id = "jornal")
+```
+
+
+```{r}
+news %>% count(jornal, name = "comments")
+```
+
+```{r}
+news_dens <- news %>%
+  mutate(month = month(as_datetime(as.numeric(date)))) %>%
+  count(jornal, month, name = "qtd") 
+
+plot_news_dens <- highchart() %>% 
+  hc_title(text = "News Distribution per Jornal") %>%
+  hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")) %>% 
+  hc_yAxis(title = list(title = "number of the news"),
+           labels = list(format = "{value}"), max = 8000) %>% 
+  hc_tooltip(pointFormat = "{point.y}") %>% 
+  hc_add_series(name = "carta capital" , data = (news_dens %>% filter(jornal == "carta_capital"))$qtd) %>%  
+  hc_add_series(name = "el pais" , data = (news_dens %>% filter(jornal == "el_pais"))$qtd) %>%
+  hc_add_series(name = "estadão" , data = (news_dens %>% filter(jornal == "estadao"))$qtd) %>%  
+  hc_add_series(name = "folha" , data = (news_dens %>% filter(jornal == "folha"))$qtd) %>%  
+  hc_add_series(name = "gazeta" , data = (news_dens %>% filter(jornal == "gazeta_do_povo"))$qtd) %>%  
+  hc_add_series(name = "o antagonista" , data = (news_dens %>% filter(jornal == "oantagonista"))$qtd) %>%  
+  hc_add_series(name = "o globo" , data = (news_dens %>% filter(jornal == "oglobo"))$qtd) %>%
+  hc_add_series(name = "veja" , data = (news_dens %>% filter(jornal == "veja"))$qtd)
+
+plot_news_dens
+```
+
+
+```{r load comments}
+# load comments
+oantagonistaComments <- mongo("oantagonistaComments", url = HOST_IP)$find() %>% 
+  select(id_article, date, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+ogloboComments <- mongo("ogloboComments", url = HOST_IP)$find() %>% 
+  select(id_article, date, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+vejaComments <- mongo("vejaComments", url = HOST_IP)$find() %>% 
+  select(id_article, date, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+# convert date type
+oantagonistaComments$date <- as.numeric(as.character(oantagonistaComments$date))
+ogloboComments$date <- as.numeric(as.character(ogloboComments$date))
+vejaComments$date <- as.numeric(as.character(vejaComments$date))
+
+# concat comments
+comments <-bind_rows(
+    "oantagonista" = oantagonistaComments,
+    "oglobo" = ogloboComments,
+    "veja" = vejaComments,
+    .id = "jornal")  %>% 
+  rename(url = id_article)
+```
+
+```{r}
+comments %>%  count(jornal, name = "comments")
+```
+
+
+```{r}
+comments_dens <- merge(x = news %>% select(url, jornal), y = comments , all = TRUE)  %>%
+  mutate(month = month(as_datetime(as.numeric(date)))) %>%
+  count(jornal, month, name = "qtd") %>% 
+  filter(!is.na(month))
+
+plot_comments_dens <- highchart() %>% 
+  hc_title(text = "Comments Distribution per Jornal") %>%
+  hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez", "dez")) %>% 
+  hc_yAxis(title = list(title = "number of the comments"),
+           labels = list(format = "{value}"), max = 310000) %>% 
+  hc_tooltip(pointFormat = "{point.y}") %>% 
+  hc_add_series(name = "o antagonista" , data = (comments_dens %>% filter(jornal == "oantagonista"))$qtd) %>%  
+  hc_add_series(name = "o globo" , data = (comments_dens %>% filter(jornal == "oglobo"))$qtd) %>%
+  hc_add_series(name = "veja" , data = (comments_dens %>% filter(jornal == "veja"))$qtd)
+
+plot_comments_dens
+```
+
