@@ -31,26 +31,28 @@ library(ggpubr)
 library(here)
 library(highcharter)
 library(mongolite)
+
+HOST_IP = "mongodb://192.168.1.5:27017/news_2018"
 ```
 
 ## Os dados
 Foram coletadas notícias e comentários dos cadernos de esporte e política dos portais Estadão, Folha de São Paulo,O Antagonista,O Globo e Veja durante o período de janeiro à dezembro de 2018. Em 2018, os cadernos de esporte e política cobriram eventos como a copa do mundo de futebolmasculino7e as eleições presidenciais brasileiras8, momentos especialmente interessantes de seremanalisados devido a uma maior tendencia das notícias serem apresentadas de forma mais subjetiva,de acordo com o posicionamento esportivo/político do seu editor.
 
 ```{r load data, message=FALSE, warning=FALSE}
-carta_capital <- mongo("carta_capital", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-el_pais <- mongo("el_pais", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-estadao <- mongo("estadao", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-folha <- mongo("folha", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-gazeta_do_povo <- mongo("gazeta_do_povo", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-oantagonista <- mongo("oantagonista", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-oglobo <- mongo("oglobo", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-veja <- mongo("veja", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+carta_capital <- mongo("carta_capital", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+el_pais <- mongo("el_pais", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+estadao <- mongo("estadao", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+folha <- mongo("folha", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+#gazeta_do_povo <- mongo("gazeta_do_povo", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oantagonista <- mongo("oantagonista", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oglobo <- mongo("oglobo", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+veja <- mongo("veja", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 
 carta_capital$date <- as.numeric(as.character(carta_capital$date))
 el_pais$date <- as.numeric(as.character(el_pais$date))
 estadao$date <- as.numeric(as.character(estadao$date))
 folha$date <- as.numeric(as.character(folha$date))
-gazeta_do_povo$date <- as.numeric(as.character(gazeta_do_povo$date))
+#gazeta_do_povo$date <- as.numeric(as.character(gazeta_do_povo$date))
 oantagonista$date <- as.numeric(as.character(oantagonista$date))
 oglobo$date <- as.numeric(as.character(oglobo$date))
 veja$date <- as.numeric(as.character(veja$date))
@@ -61,13 +63,13 @@ news <-bind_rows(
     "el_pais" = el_pais,
     "estadao" = estadao, 
     "folha" = folha, 
-    "gazeta_do_povo" = gazeta_do_povo,
+    #"gazeta_do_povo" = gazeta_do_povo,
     "oantagonista" = oantagonista,
     "oglobo" = oglobo,
     "veja" = veja,
     .id = "jornal")
 
-readabilityMetrics <- mongo("readabilityMetrics", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% filter(words > 0) 
+readabilityMetrics <- mongo("readabilityMetrics", url = HOST_IP)$find() %>% filter(words > 0) 
 readabilityMetrics <- merge(x = readabilityMetrics, y = news, all = TRUE) %>% filter(!is.na(jornal), !is.na(words))
 readabilityMetrics <- readabilityMetrics %>% mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5) * 100)
 readabilityMetrics$number_comments[is.na(readabilityMetrics$number_comments)]<-0
@@ -87,7 +89,7 @@ subj_carta <- biasNews %>%
   filter(jornal == "carta_capital") %>% 
   bootstrap(median(bias_news), 
             R = resamples) %>% 
-    CI.percentile(probs = c(.025, .975))
+    CI.percentile(probs = c(.025, .975))  
 
 subj_elpais <- biasNews %>% 
   filter(jornal == "el_pais") %>% 
@@ -108,11 +110,11 @@ subj_folha <- biasNews %>%
             R = resamples) %>% 
     CI.percentile(probs = c(.025, .975))
 
-subj_gazeta <- biasNews %>% 
-  filter(jornal == "gazeta_do_povo") %>% 
-  bootstrap(median(bias_news), 
-            R = resamples) %>% 
-    CI.percentile(probs = c(.025, .975))
+#subj_gazeta <- biasNews %>% 
+#  filter(jornal == "gazeta_do_povo") %>% 
+#  bootstrap(median(bias_news), 
+#            R = resamples) %>% 
+#    CI.percentile(probs = c(.025, .975))
 
 subj_oantagonista <- biasNews %>% 
   filter(jornal == "oantagonista") %>% 
@@ -132,9 +134,9 @@ subj_veja <- biasNews %>%
             R = resamples) %>% 
     CI.percentile(probs = c(.025, .975))
 
-subj_ci = data.frame(rbind(subj_carta, subj_elpais, subj_estadao, subj_folha, subj_gazeta, subj_oantagonista, subj_oglobo, subj_veja))
+subj_ci = data.frame(rbind(subj_carta, subj_elpais, subj_estadao, subj_folha, subj_oantagonista, subj_oglobo, subj_veja))
 
-subj_ci$jornal = c("Carta Capital", "El País", "Estadão", "Folha de SP", "Gazeta do Povo", "O Antagonista", "O Globo", "Veja")
+subj_ci$jornal = c("Carta Capital", "El País", "Estadão", "Folha de SP", "O Antagonista", "O Globo", "Veja")
 ```
 
 ```{r}
@@ -152,7 +154,7 @@ qp1 <- subj_ci %>%
         plot.title = element_text(size=18)
         ) + coord_flip()
 qp1
-#ggsave("pp1.png", width = 6, height = 4)
+ggsave("fig2.pdf", width = 6, height = 4)
 ```
 
 `O Antagonista` é o portal com maior índice de subjetividade e, por se tratar de um portal que possui alinhamento político declarado (direita), esse resultado condiz com o esperado. Em seguida, `Veja` e `O Globo` são retratados com valores de subjetividade similares, sem apresentarem diferença significativa. Por último, `Estadão` e `Folha de São Paulo` manifestam, respectivamente, os menores índices de subjetividade.
@@ -203,7 +205,7 @@ qp2 <- read_ci %>%
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
 qp2
-#ggsave("pp2.png", width = 6, height = 4)
+ggsave("fig3.pdf", width = 6, height = 4)
 ```
 
 ```{r}
@@ -244,11 +246,11 @@ folha_len <- readabilityMetrics %>%
             R = resamples) %>% 
     CI.percentile(probs = c(.025, .975))
 
-gazeta_len <- readabilityMetrics %>% 
-  filter(jornal == "gazeta_do_povo") %>% 
-  bootstrap(cor(bias_news, words, method = "spearman"), 
-            R = resamples) %>% 
-    CI.percentile(probs = c(.025, .975))
+#gazeta_len <- readabilityMetrics %>% 
+#  filter(jornal == "gazeta_do_povo") %>% 
+#  bootstrap(cor(bias_news, words, method = "spearman"), 
+#            R = resamples) %>% 
+#    CI.percentile(probs = c(.025, .975))
 
 oantagonista_len <- readabilityMetrics %>% 
   filter(jornal == "oantagonista") %>% 
@@ -268,8 +270,8 @@ veja_len <- readabilityMetrics %>%
             R = resamples) %>% 
     CI.percentile(probs = c(.025, .975))
 
-subj_len = data.frame(rbind(carta_len, elpais_len, estadao_len, folha_len, gazeta_len, oantagonista_len, oglobo_len, veja_len))
-subj_len$portal = c("Carta Capital", "El Pais", "Estadão", "Folha de SP","Gazeta do Povo", "O Antagonista", "O Globo", "Veja")
+subj_len = data.frame(rbind(carta_len, elpais_len, estadao_len, folha_len, oantagonista_len, oglobo_len, veja_len))
+subj_len$portal = c("Carta Capital", "El Pais", "Estadão", "Folha de SP", "O Antagonista", "O Globo", "Veja")
 
 ```
 
@@ -287,7 +289,7 @@ qp3 <- subj_len %>%
         ) + coord_flip()
 
 qp3
-#ggsave("pp3.png", width = 6.3, height = 4)
+ggsave("fig4.pdf", width = 6, height = 4)
 ```
 
 O portal `O Antagonista` apresenta correlação positiva entre tamanho e subjetividade enquanto os demais portais apresentam correlações negativas. Dentre os resultados, destacam-se os valores de correlação da `Folha de São Paulo`, `Estadão` e `O Globo`, com valores aproximados de $-0.75$, o que pode ser considerado uma correlação negativa forte, isso mostra uma tendência de que notícias menores são mais subjetivas.
@@ -346,7 +348,7 @@ qp4 <- bias_pop %>%
   scale_y_continuous(limits = c(-.06, .1))
 
 qp4
-#ggsave("pp4.png", width = 6, height = 4)
+ggsave("fig5.pdf", width = 6, height = 4)
 ```
 
 ```{r}
@@ -371,7 +373,7 @@ a <- highchart() %>%
   hc_yAxis(#title = list(text = "percentage of bias"),
            labels = list(format = "{value}%"), max = 80) %>% 
   hc_tooltip(pointFormat = "{point.y}%") %>% 
-  hc_add_series(name = "diversos" , data = (bias_section %>% filter(section == "diversos"))$bias) %>%  
+  #hc_add_series(name = "diversos" , data = (bias_section %>% filter(section == "diversos"))$bias) %>%  
   hc_add_series(name = "economia" , data = (bias_section %>% filter(section == "economia"))$bias) %>%  
   hc_add_series(name = "educacao" , data = (bias_section %>% filter(section == "educacao"))$bias) %>% 
   hc_add_series(name = "esporte" , data = (bias_section %>% filter(section == "esporte"))$bias) %>% 

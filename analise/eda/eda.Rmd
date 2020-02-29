@@ -126,7 +126,7 @@ comments <-bind_rows(
 ```
 
 ```{r}
-comments %>%  count(jornal, name = "comments")
+comments %>% count(jornal, name = "comments")
 ```
 
 
