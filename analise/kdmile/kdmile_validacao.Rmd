@@ -23,19 +23,21 @@ library(ggpubr)
 library(here)
 library(highcharter)
 library(mongolite)
+
+HOST_IP = "mongodb://192.168.1.8:27017/news_2018"
 ```
 
 ## Corregando dados
 
 ```{r message=FALSE, warning=FALSE}
-carta_capital <- mongo("carta_capital", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-el_pais <- mongo("el_pais", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-estadao <- mongo("estadao", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-folha <- mongo("folha", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-gazeta_do_povo <- mongo("gazeta_do_povo", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-oantagonista <- mongo("oantagonista", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-oglobo <- mongo("oglobo", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-veja <- mongo("veja", url = "mongodb://192.168.1.7:27017/news_2018")$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+carta_capital <- mongo("carta_capital", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+el_pais <- mongo("el_pais", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+estadao <- mongo("estadao", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+folha <- mongo("folha", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+#gazeta_do_povo <- mongo("gazeta_do_povo", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oantagonista <- mongo("oantagonista", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+oglobo <- mongo("oglobo", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+veja <- mongo("veja", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 ```
 
 ## Validação
@@ -140,24 +142,24 @@ ci_folha = reamostragens %>%
          statistic = theta_c)
 
 # definindo portal para população 
-pop <- gazeta_do_povo %>% 
-  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
-  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao"), "opinativo", "informativo")) %>% 
-  filter(!is.na(type_news))
+#pop <- gazeta_do_povo %>% 
+#  mutate(bias_news = (1 - (arg + sen + val + pre + mod) / 5)) %>% 
+#  mutate(type_news = ifelse(section%in%c("politica", "internacional", "economia", "opiniao"), "opinativo", "informativo")) %>% 
+#  filter(!is.na(type_news))
 
-theta_c = pop %>% group_by(type_news) %>% 
-        summarise(media = mean(bias_news))
+#theta_c = pop %>% group_by(type_news) %>% 
+#        summarise(media = mean(bias_news))
 
-theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
+#theta_c = theta_c %>% filter(type_news == "opinativo") %>% pull(media) - theta_c %>% filter(type_news == "informativo") %>% pull(media)
 
 # A REAMOSTRAGEM
-reamostragens = tibble(i = 1:repeticoes) %>% 
-  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
+#reamostragens = tibble(i = 1:repeticoes) %>% 
+#  mutate(theta_c_s = map_dbl(i, ~ um_bootstrap(pop)))
 
-ci_gazeta = reamostragens %>% 
-  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
-         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
-         statistic = theta_c)
+#ci_gazeta = reamostragens %>% 
+#  summarise(conf.low = theta_c + quantile((theta_c_s - theta_c), .05), 
+#         conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
+#         statistic = theta_c)
 
 # definindo portal para população 
 pop <- oantagonista %>% 
@@ -219,11 +221,15 @@ ci_veja = reamostragens %>%
          conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
          statistic = theta_c)
 
-ci_portais = data.frame(rbind(ci_carta, ci_elpais, ci_estadao, ci_folha, ci_gazeta, ci_oantagonista, ci_oglobo, ci_veja))
+ci_portais = data.frame(rbind(ci_carta, ci_elpais, ci_estadao, ci_folha, ci_oantagonista, ci_oglobo, ci_veja))
 
-ci_portais$portal = c("carta_capital", "el_pais", "estadao", "folha", "gazeta", "oantagonista", "oglobo", "veja")
+ci_portais$portal = c("Carta Capital", "El País", "Estadão", "Folha de SP", "O Antagonista", "O Globo", "Veja")
 
-a <- ci_portais %>% 
+```
+
+
+```{r}
+vld1 <- ci_portais %>% 
   ggplot(aes(x = portal, ymin = conf.low, ymax = conf.high, color =  portal)) + 
   geom_errorbar(width = .8, size=.8) +
   labs(#title = "Diferença média de subjetividade",
@@ -233,14 +239,18 @@ a <- ci_portais %>%
   scale_y_continuous(labels = scales::percent) +
   theme(legend.position = "none") +
   theme_bw() +
+  theme_bw() +
   theme(legend.position="none", 
-        axis.text=element_text(size=14)) +
+        axis.text=element_text(size=20),
+        plot.title = element_text(size=22)
+        ) +
   coord_flip()
 
-a
+vld1
 
-#ggsave("validacao.pdf", width = 6, height = 4)
+ggsave("fig0.pdf", width = 8, height = 6)
 ```
+
 
 ## Como se compararam a subjetividade entre os portais com posicionamento político definido e não definido ?
 
@@ -250,7 +260,7 @@ pos_pol <- bind_rows(
     "indefinido" = el_pais,
     "indefinido" = estadao, 
     "indefinido" = folha, 
-    "indefinido" = gazeta_do_povo,
+    #"indefinido" = gazeta_do_povo,
     "definido" = oantagonista,
     "indefinido" = oglobo,
     "definido" = veja,
@@ -274,11 +284,11 @@ subj_indef <- pos_pol %>%
 
 subj_ci = data.frame(rbind(subj_def, subj_indef))
 
-subj_ci$jornal = c("declarado", "não declarado")
+subj_ci$jornal = c("Declared Position", "Non-Declared Position")
 ```
 
 ```{r}
-qp1 <- subj_ci %>% 
+vld2 <- subj_ci %>% 
   ggplot(aes(x = jornal, ymin = X2.5., ymax = X97.5., color = jornal)) + 
   geom_errorbar(width = .5, size = .8) +
   labs(#title = "Percentual de subjetividade por portal",
@@ -288,11 +298,11 @@ qp1 <- subj_ci %>%
   scale_y_continuous(labels = scales::percent) +
   theme_bw() +
   theme(legend.position="none", 
-        axis.text=element_text(size=14),
-        plot.title = element_text(size=18)
+        axis.text=element_text(size=20),
+        plot.title = element_text(size=22)
         )
-qp1
-#ggsave("pp1.png", width = 6, height = 4)
+vld2
+ggsave("fig1.pdf", width = 8, height = 6)
 ```
 
 ```{r}

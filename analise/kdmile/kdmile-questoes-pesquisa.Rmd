@@ -32,7 +32,7 @@ library(here)
 library(highcharter)
 library(mongolite)
 
-HOST_IP = "mongodb://192.168.1.5:27017/news_2018"
+HOST_IP = "mongodb://192.168.1.8:27017/news_2018"
 ```
 
 ## Os dados
@@ -58,15 +58,22 @@ oglobo$date <- as.numeric(as.character(oglobo$date))
 veja$date <- as.numeric(as.character(veja$date))
 
 
+el_pais[el_pais == "internacional"]<-"politica"
+oglobo[oglobo == "internacional"]<-"politica"
+oglobo[oglobo == "economia"]<-"esporte"
+oantagonista[oantagonista == "diversos"]<-"politica"
+oantagonista[oantagonista == "tecnologia"]<-"esporte"
+
+
 news <-bind_rows(
-    "carta_capital" = carta_capital,
-    "el_pais" = el_pais,
-    "estadao" = estadao, 
-    "folha" = folha, 
+    "Carta Capital" = carta_capital,
+    "El País" = el_pais,
+    "Estadão" = estadao, 
+    "Folha de SP" = folha, 
     #"gazeta_do_povo" = gazeta_do_povo,
-    "oantagonista" = oantagonista,
-    "oglobo" = oglobo,
-    "veja" = veja,
+    "O Antagonista" = oantagonista,
+    "O Globo" = oglobo,
+    "Veja" = veja,
     .id = "jornal")
 
 readabilityMetrics <- mongo("readabilityMetrics", url = HOST_IP)$find() %>% filter(words > 0) 
@@ -150,11 +157,11 @@ qp1 <- subj_ci %>%
   scale_y_continuous(labels = scales::percent) +
   theme_bw() +
   theme(legend.position="none", 
-        axis.text=element_text(size=14),
-        plot.title = element_text(size=18)
+        axis.text=element_text(size=20),
+        plot.title = element_text(size=22)
         ) + coord_flip()
 qp1
-ggsave("fig2.pdf", width = 6, height = 4)
+ggsave("fig2.pdf", width = 8, height = 6)
 ```
 
 `O Antagonista` é o portal com maior índice de subjetividade e, por se tratar de um portal que possui alinhamento político declarado (direita), esse resultado condiz com o esperado. Em seguida, `Veja` e `O Globo` são retratados com valores de subjetividade similares, sem apresentarem diferença significativa. Por último, `Estadão` e `Folha de São Paulo` manifestam, respectivamente, os menores índices de subjetividade.
@@ -197,15 +204,12 @@ qp2 <- read_ci %>%
        x = "", 
        y = "") + 
   theme_bw() +
-  theme(legend.text=element_text(size=14),
-        axis.text=element_text(size=14),
-        plot.title = element_text(size=18),
-        legend.title=element_blank(),
-        axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
+  theme(legend.position="none", 
+        axis.text=element_text(size=20),
+        plot.title = element_text(size=22)
+        ) + coord_flip()
 qp2
-ggsave("fig3.pdf", width = 6, height = 4)
+ggsave("fig3.pdf", width = 8, height = 6)
 ```
 
 ```{r}
@@ -270,8 +274,13 @@ veja_len <- readabilityMetrics %>%
             R = resamples) %>% 
     CI.percentile(probs = c(.025, .975))
 
-subj_len = data.frame(rbind(carta_len, elpais_len, estadao_len, folha_len, oantagonista_len, oglobo_len, veja_len))
-subj_len$portal = c("Carta Capital", "El Pais", "Estadão", "Folha de SP", "O Antagonista", "O Globo", "Veja")
+news_len <- readabilityMetrics %>% 
+  bootstrap(cor(bias_news, words, method = "spearman"), 
+            R = resamples) %>% 
+    CI.percentile(probs = c(.025, .975))
+
+subj_len = data.frame(rbind(carta_len, elpais_len, estadao_len, folha_len, oantagonista_len, oglobo_len, veja_len, news_len))
+subj_len$portal = c("Carta Capital", "El Pais", "Estadão", "Folha de SP", "O Antagonista", "O Globo", "Veja", "All Media Outlets")
 
 ```
 
@@ -284,12 +293,12 @@ qp3 <- subj_len %>%
        x = "", 
        y = "") +
   theme_bw() +
-  theme(legend.position="none", axis.text=element_text(size=14),
-         plot.title = element_text(size=18)
+  theme(legend.position="none", axis.text=element_text(size=20),
+         plot.title = element_text(size=22)
         ) + coord_flip()
 
 qp3
-ggsave("fig4.pdf", width = 6, height = 4)
+ggsave("fig4.pdf", width = 8, height = 6)
 ```
 
 O portal `O Antagonista` apresenta correlação positiva entre tamanho e subjetividade enquanto os demais portais apresentam correlações negativas. Dentre os resultados, destacam-se os valores de correlação da `Folha de São Paulo`, `Estadão` e `O Globo`, com valores aproximados de $-0.75$, o que pode ser considerado uma correlação negativa forte, isso mostra uma tendência de que notícias menores são mais subjetivas.
@@ -330,7 +339,7 @@ veja_pop <- readabilityMetrics %>%
 
 bias_pop = data.frame(rbind(estadao_pop, folha_pop, oantagonista_pop, oglobo_pop, veja_pop))
 
-bias_pop$portal = c("Estadão", "Folha", "OAntagonista", "O Globo", "Veja")
+bias_pop$portal = c("Estadão", "Folha", "O Antagonista", "O Globo", "Veja")
 ```
 
 ```{r}
@@ -343,12 +352,12 @@ qp4 <- bias_pop %>%
        y = "") + 
   theme_bw() +
   theme(legend.position="none", 
-        axis.text=element_text(size=13.5),
-        plot.title = element_text(size=18)) +
-  scale_y_continuous(limits = c(-.06, .1))
+        axis.text=element_text(size=20),
+        plot.title = element_text(size=22)) +
+  scale_y_continuous(limits = c(-.06, .1)) + coord_flip()
 
 qp4
-ggsave("fig5.pdf", width = 6, height = 4)
+ggsave("fig5.pdf", width = 8, height = 6)
 ```
 
 ```{r}
@@ -362,25 +371,26 @@ ggsave("fig4-5.pdf", width = 12, height = 4)
 # QP5: Qual o caderno mais subjetivo (considerando todas os portais em um ano de coleta)?
 
 ```{r}
-bias_section <- news %>%
+bias_section <- news  %>% 
+  filter(section == "politica") %>% 
   mutate(month = month(as_datetime(as.numeric(date)))) %>%
-  group_by(month, section) %>%
+  group_by(month, jornal) %>%
   summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
 
 a <- highchart() %>% 
   #hc_title(text = " Section bias distribution by month") %>%
   hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")) %>% 
   hc_yAxis(#title = list(text = "percentage of bias"),
-           labels = list(format = "{value}%"), max = 80) %>% 
+           labels = list(format = "{value}%"), max = 83) %>% 
   hc_tooltip(pointFormat = "{point.y}%") %>% 
   #hc_add_series(name = "diversos" , data = (bias_section %>% filter(section == "diversos"))$bias) %>%  
-  hc_add_series(name = "economia" , data = (bias_section %>% filter(section == "economia"))$bias) %>%  
-  hc_add_series(name = "educacao" , data = (bias_section %>% filter(section == "educacao"))$bias) %>% 
-  hc_add_series(name = "esporte" , data = (bias_section %>% filter(section == "esporte"))$bias) %>% 
-  hc_add_series(name = "internacional" , data = (bias_section %>% filter(section == "internacional"))$bias) %>% 
-  hc_add_series(name = "opiniao" , data = (bias_section %>% filter(section == "opiniao"))$bias) %>% 
-  hc_add_series(name = "politica" , data = (bias_section %>% filter(section == "politica"))$bias) %>% 
-  hc_add_series(name = "tecnologia" , data = (bias_section %>% filter(section == "tecnologia"))$bias)
+  hc_add_series(name = "Carta Capital" , data = (bias_section %>% filter(jornal == "Carta Capital"))$bias) %>%  
+  hc_add_series(name = "El País" , data = (bias_section %>% filter(jornal == "El País"))$bias) %>% 
+  hc_add_series(name = "Estadão" , data = (bias_section %>% filter(jornal == "Estadão"))$bias) %>% 
+  hc_add_series(name = "Folha de SP" , data = (bias_section %>% filter(jornal == "Folha de SP"))$bias) %>% 
+  hc_add_series(name = "O Antagonista" , data = (bias_section %>% filter(jornal == "O Antagonista"))$bias) %>% 
+  hc_add_series(name = "O Globo" , data = (bias_section %>% filter(jornal == "O Globo"))$bias) %>% 
+  hc_add_series(name = "Veja" , data = (bias_section %>% filter(jornal == "Veja"))$bias)
 
 a
 
@@ -400,3 +410,43 @@ Neste artigo, realizamos uma análise de subjetividade em notícias de $5$ porta
 * Os resultados mostram evidências de que notícias menores tendem a ser mais subjetivas. Isso pode estar associado à motivação da notícia, intuitivamente notícias que tem por objetivo informar se preocupam em fornecer mais detalhes sobre o fato noticiado, resultando em maior clareza ao leitor.
  
 Em trabalhos futuros, pretendemos incluir mais portais de notícias (p.ex. Carta Capital) afim de cobrir todos os posicionamentos do espectro politico-ideológico. Também pretendemos estender validar nossa abordagem em outros gêneros textuais. Além disso, pretendemos incluir nossas descobertas como features em um sistema de recomendação de notícias, buscando reduzir a subjetividade das notícias recomendadas.
+
+```{r}
+# barchart with added parameters
+max.temp <- c(756.7, 819.2, 374.4, 543.8, 75.44, 506.2, 373.5)
+barplot(max.temp,
+main = "",
+xlab = "",
+ylab = "Media Outlets",
+names.arg = c("Carta Capital", "El País", "Estadão", "Folha de SP", "O Antagonista", "O Globo", "Veja"),
+border="red",
+col="blue",
+density=10
+)
+
+ggsave("fig9.pdf", width = 12, height = 4)
+```
+
+```{r}
+df <- data.frame(dose=c("Carta Capital", "El País", "Estadão", "Folha de SP", "O Antagonista", "O Globo", "Veja"),
+                len=c(756.7, 819.2, 374.4, 543.8, 75.44, 506.2, 373.5))
+
+library(ggplot2)
+# Basic barplot
+p<-ggplot(data=df, aes(x=dose, y=len, fill=dose)) +
+  geom_bar(stat="identity")+
+labs(#title = "Relação entre subjetividade e popularidade",
+       #subtitle = "Correlação entre o tamanho da notícia e sua popularidade",
+       x = "",
+       y = "") + 
+  theme_bw() +
+  theme(legend.position="none", 
+        axis.text=element_text(size=20),
+        plot.title = element_text(size=22)) + coord_flip()
+
+
+ggsave("fig9.pdf", width = 8, height = 6)
+
+```
+
+

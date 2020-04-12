@@ -55,24 +55,31 @@ client = MongoClient(HOST_IP, 27017)
 # select db
 db = client['news_2018']
 # define colelctions
-collections = ["oantagonista", "oglobo", "veja"]
+collections = ['oantagonista', 'oglobo', 'veja']
 
 for collection in collections:
     len_collection = db[collection].count_documents({})
     index = 0
     for article in db[collection].find({}, no_cursor_timeout=True).batch_size(5):
         # Processing text
-        article_text = process_sentences(article["text"]) 
-        for comment in db[collection + "Comments"].find({'id_article': article["url"]}, no_cursor_timeout=True).batch_size(5):
+        article_text = process_sentences(article['text']) 
+        
+        count_comment = 1
+        
+        for comment in db[collection + 'Comments'].find({'id_article': article['url']}, no_cursor_timeout=True).sort('date').batch_size(5):
+          
             # Processing comment text
-            comment_text = lexical_normalization(comment["text"])
-            comment_text = process_sentences(comment["text"])
-            # Insert wmd in database
-            db["alignmentNewsComments"].insert_one({
-                                                        'article': article['url'],
-                                                        'comment': comment['_id'],
-                                                        'wmd': w2v.wmdistance(article_text, comment_text)
-                                                   })
+            comment_text = process_sentences(lexical_normalization(comment['text']))
+            
+            # Insert alignment in database
+            db['alignmentNewsComments'].insert_one({
+                'article': article['url'],
+                'number_comment': count_comment,
+                'alignment': w2v.wmdistance(article_text, comment_text)
+            })
+                
+            count_comment += 1
+            
         # print status
         index += 1
         print('Portal: {0} - Progress: {1:.4f} %'.format(collection, index / len_collection * 100), end='\r')  
