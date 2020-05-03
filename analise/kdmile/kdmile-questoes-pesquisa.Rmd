@@ -36,6 +36,7 @@ HOST_IP = "mongodb://192.168.1.7:27017/news_2018"
 ```
 
 ## Os dados
+
 Foram coletadas notícias e comentários dos cadernos de esporte e política dos portais Carta Capital, El País, Estadão, Folha de São Paulo, O Antagonista, O Globo e Veja durante o período de janeiro à dezembro de 2018. Em 2018, os cadernos de esporte e política cobriram eventos como a copa do mundo de futebol masculino e as eleições presidenciais brasileiras, momentos especialmente interessantes de serem analisados devido a uma maior tendencia das notícias serem apresentadas de forma mais subjetiva, de acordo com o posicionamento esportivo/político do seu editor.
 
 ```{r load data, message=FALSE, warning=FALSE}

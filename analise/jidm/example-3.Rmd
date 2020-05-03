@@ -1,14 +1,9 @@
 ---
-title: "An Analysis of Subjectivity in Brazilian News - KDMILe 2019"
-output: 
-  html_notebook:
-    theme: lumen
-    fig_width: 7
-    toc: true
-    toc_float: true
-    code_folding: hide
-editor_options: 
-  chunk_output_type: inline
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 ---
 
 ```{r}
@@ -28,7 +23,7 @@ library(here)
 library(highcharter)
 library(mongolite)
 
-HOST_IP = "mongodb://192.168.1.8:27017/news_2018"
+HOST_IP = "mongodb://192.168.1.7:27017/news_2018"
 ```
 
 ```{r}
@@ -77,7 +72,7 @@ bias_section <- news %>%
   summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
 
 politica_plot <- highchart() %>% 
-  hc_title(text = "Political") %>%
+  hc_title(text = "Politics") %>%
   hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")) %>% 
   hc_yAxis(#title = list(text = "percentage of bias"),
            labels = list(format = "{value}%"), max = 85) %>% 
@@ -86,10 +81,12 @@ politica_plot <- highchart() %>%
   hc_add_series(name = "Carta Capital" , data = (bias_section %>% filter(jornal == "carta_capital"))$bias) %>%  
   hc_add_series(name = "El País" , data = (bias_section %>% filter(jornal == "el_pais"))$bias) %>% 
   hc_add_series(name = "Estadão" , data = (bias_section %>% filter(jornal == "estadao"))$bias) %>% 
-  hc_add_series(name = "Folha de SP" , data = (bias_section %>% filter(jornal == "folha"))$bias) %>% 
+  hc_add_series(name = "Folha de Sp" , data = (bias_section %>% filter(jornal == "folha"))$bias) %>% 
   hc_add_series(name = "O Antagonista" , data = (bias_section %>% filter(jornal == "oantagonista"))$bias) %>% 
   hc_add_series(name = "O Globo" , data = (bias_section %>% filter(jornal == "oglobo"))$bias) %>% 
   hc_add_series(name = "Veja" , data = (bias_section %>% filter(jornal == "veja"))$bias)
+
+politica_plot
 
 politica_plot %>% hc_exporting(enabled = TRUE, filename = "fig7")
 ```
@@ -111,10 +108,12 @@ esporte_plot <- highchart() %>%
   hc_add_series(name = "Carta Capital" , data = (bias_section %>% filter(jornal == "carta_capital"))$bias) %>%  
   hc_add_series(name = "El País" , data = (bias_section %>% filter(jornal == "el_pais"))$bias) %>% 
   hc_add_series(name = "Estadão" , data = (bias_section %>% filter(jornal == "estadao"))$bias) %>% 
-  hc_add_series(name = "Folha de SP" , data = (bias_section %>% filter(jornal == "folha"))$bias) %>% 
+  hc_add_series(name = "Folha de Sp" , data = (bias_section %>% filter(jornal == "folha"))$bias) %>% 
   hc_add_series(name = "O Antagonista" , data = (bias_section %>% filter(jornal == "oantagonista"))$bias) %>% 
   hc_add_series(name = "O Globo" , data = (bias_section %>% filter(jornal == "oglobo"))$bias) %>% 
   hc_add_series(name = "Veja" , data = (bias_section %>% filter(jornal == "veja"))$bias)
+
+esporte_plot
 
 esporte_plot %>% hc_exporting(enabled = TRUE, filename = "fig8")
 ```

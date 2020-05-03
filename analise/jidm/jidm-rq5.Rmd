@@ -1,6 +1,14 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "JIDM - An Analysis of Subjectivity in Brazilian News"
+output:   
+  html_notebook:
+    theme: lumen
+    fig_width: 7
+    toc: true
+    toc_float: true
+    code_folding: hide
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ```{r message=FALSE, warning=FALSE}
@@ -20,10 +28,10 @@ library(here)
 library(highcharter)
 library(mongolite)
 
-HOST_IP = "mongodb://192.168.1.6:27017/news_2018"
+HOST_IP = "mongodb://192.168.1.7:27017/news_2018"
 ```
 
-## Corregando dados
+This notebook concerns `RQ5` of the paper entitled An Analysis of Subjectivity in Brazilian News published JIDM 2020.To this, news and commentaries were collected from the sports and politics sections of the portals Carta Capital, El País, Estadão, Folha de São Paulo, O Antagonista, O Globo, and Veja during the period from January to December 2018. In 2018, the sports sections and politics covered events such as the men's soccer world cup and the Brazilian presidential elections, especially interesting moments to be analyzed due to a greater tendency for the news to be presented in a more subjective way, according to the sports / political position of its editor.
 
 ```{r message=FALSE, warning=FALSE}
 carta_capital <- mongo("carta_capital", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
@@ -75,14 +83,16 @@ politica <-bind_rows(
     .id = "jornal")
 ```
 
+## RQ5: Do the events that took place during 2018 (e.g. Brazilian general elections, FIFA WorldCup) influence the subjectivity level of their respective news sections?
 
-```{r}
-library(Hmisc)
-describe(pop %>% select(type_news))
-```
+We answer RQ5 by analyzing the subjectivity distribuition of some section throughout 2018. The objective here is to verify whether important events that happened in 2018 had influence over the journalistic coverage. Based on the premise that events influence the news coverage, news addressing these events would be more subjective than the others. Thus, we consider events such as the Brazilian general elections and FIFA World Cup to estimate the news subjectivity from the political and sports sections of all media outlets. In order to measure the impact of events on the news coverage, we split the news from each section into two groups: news addressing and news not addressing those events. For that, we have manually defined sets of keywords that characterize each of these events and checked whether the news articletitle contains one or more of these keywords. The keywords are distinct for each event:
 
+<ul>
+  <li> FIFA Men’s World Cup: Seleção Brasileira (Brazilian National Team), Copa do Mundo (WorldCup); </li>
+  <li> Presidential elections: eleições presidenciais (presidential elections) and name of the candidates. </li>
+</ul>
 
-## Política
+In the politics dataset, 64770 of the articles are related to the presidential elections, against16881articles that are not. Regarding the sports dataset,21955articles are related to the FIFA Men’s WorldCup, in contrast, to11286articles that did not address this event. Figure 8 shows the confidence interval of the average difference between the news that are related to events and the unrelated ones, for each section.
 
 ```{r}
 set.seed(1212)
@@ -123,14 +133,6 @@ ci_politica = reamostragens %>%
          conf.high = theta_c + quantile((theta_c_s - theta_c), .95), 
          statistic = theta_c)
 
-```
-
-# Esporte
-```{r}
-set.seed(1212)
-
-repeticoes = 5000 # pelo menos 2000, mas mais não faz mal.
-
 um_bootstrap <- function(x){
   copa_news <- x %>% filter(type_news == 'copa') %>% pull(bias_news)
   boot_copa_news <- sample(copa_news,           # amostre dos dados
@@ -170,7 +172,7 @@ ci_events$section = c("Politics", "Sport")
 
 ```
 
-
+Both confidence intervals are positive and do not contain0, suggesting that such events have influenced and increased the subjectivity level by approximately1%. This influence is probably related to the competitive aspect associated with the events and the high journalistic coverage portrayed by journalists who, occasionally, have opposite views about the events and might end up transmitting traces of their preferences when addressing them.  However, further research is still necessary to evaluate how this subjectivity difference, of around1%, is reflected in the news articles and how it impacts the readers.
 
 ```{r}
 secplot <- ci_events %>% 
@@ -193,4 +195,3 @@ secplot
 
 ggsave("fig6.pdf", width = 8, height = 6)
 ```
-
