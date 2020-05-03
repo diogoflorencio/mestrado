@@ -11,9 +11,9 @@ editor_options:
   chunk_output_type: inline
 ---
 
-Este notebook implementa a análise realizada no artigo An Analysis of Subjectivity in Brazilian News publicado no KDMILe- 2019. Para guiar a pesquisa, são definidas $4$ questões de pesquisa (QP) apresentadas a seguir. Acreditamos que o método usado, juntamente com as respostas obtidas a essas questões, contribuem para um melhor entendimento sobre as características linguísticas das notícias que consumimos diariamente.
+Este notebook implementa a análise realizada no artigo [An Analysis of Subjectivity in Brazilian News](https://sol.sbc.org.br/index.php/kdmile/article/view/8792/8693) publicado no KDMILe- 2019. Para guiar a pesquisa, foram definidas 4 questões de pesquisa (QP) apresentadas a seguir. Acreditamos que o método usado, juntamente com as respostas obtidas a essas questões, contribuem para um melhor entendimento sobre as características linguísticas das notícias que consumimos diariamente.
 
-A validação do método utilizado para estimava de subjetividade por ser encontrada no artigo. Todos os resultados dos experimentos a seguir são retratadospor intervalos com95%de confiança estimados a partir de2000re-amostragens de tamanho aleatório,computadas por meio debootstrapingcom reposição.
+A validação do método utilizado para estimava de subjetividade por ser encontrado no artigo. Todos os resultados dos experimentos a seguir são retratados por intervalos com 95% de confiança estimados a partir de 2000 re-amostragens de tamanho aleatório, computadas por meio de bootstraping com reposição.
 
 ```{r message=FALSE, warning=FALSE}
 options(warn=-1) # ignore warns
@@ -32,11 +32,11 @@ library(here)
 library(highcharter)
 library(mongolite)
 
-HOST_IP = "mongodb://192.168.1.8:27017/news_2018"
+HOST_IP = "mongodb://192.168.1.7:27017/news_2018"
 ```
 
 ## Os dados
-Foram coletadas notícias e comentários dos cadernos de esporte e política dos portais Estadão, Folha de São Paulo,O Antagonista,O Globo e Veja durante o período de janeiro à dezembro de 2018. Em 2018, os cadernos de esporte e política cobriram eventos como a copa do mundo de futebolmasculino7e as eleições presidenciais brasileiras8, momentos especialmente interessantes de seremanalisados devido a uma maior tendencia das notícias serem apresentadas de forma mais subjetiva,de acordo com o posicionamento esportivo/político do seu editor.
+Foram coletadas notícias e comentários dos cadernos de esporte e política dos portais Carta Capital, El País, Estadão, Folha de São Paulo, O Antagonista, O Globo e Veja durante o período de janeiro à dezembro de 2018. Em 2018, os cadernos de esporte e política cobriram eventos como a copa do mundo de futebol masculino e as eleições presidenciais brasileiras, momentos especialmente interessantes de serem analisados devido a uma maior tendencia das notícias serem apresentadas de forma mais subjetiva, de acordo com o posicionamento esportivo/político do seu editor.
 
 ```{r load data, message=FALSE, warning=FALSE}
 carta_capital <- mongo("carta_capital", url = HOST_IP)$find() %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
@@ -66,13 +66,13 @@ oantagonista[oantagonista == "tecnologia"]<-"esporte"
 
 
 news <-bind_rows(
-    "Carta Capital" = carta_capital,
-    "El País" = el_pais,
-    "Estadão" = estadao, 
-    "Folha de SP" = folha, 
+    "carta_capital" = carta_capital,
+    "el_pais" = el_pais,
+    "estadao" = estadao, 
+    "folha" = folha, 
     #"gazeta_do_povo" = gazeta_do_povo,
-    "O Antagonista" = oantagonista,
-    "O Globo" = oglobo,
+    "oantagonista" = oantagonista,
+    "oglobo" = oglobo,
     "Veja" = veja,
     .id = "jornal")
 
@@ -213,10 +213,10 @@ ggsave("fig3.pdf", width = 8, height = 6)
 ```
 
 ```{r}
-ggarrange(qp1, qp2, 
-          labels = c("A", "B"),
-          ncol = 2)
-ggsave("fig2-3.pdf", width = 12, height = 4)
+#ggarrange(qp1, qp2, 
+#          labels = c("A", "B"),
+#          ncol = 2)
+#ggsave("fig2-3.pdf", width = 12, height = 4)
 ```
 
 Para qualquer métrica de legibilidade, os intervalos estimados são próximos de $0$. Ou seja, a correlação existente entre as variáveis é desprezível. Com isso temos indícios de que a subjetividade de uma notícia independe de sua legibilidade.
@@ -269,7 +269,7 @@ oglobo_len <- readabilityMetrics %>%
     CI.percentile(probs = c(.025, .975))
 
 veja_len <- readabilityMetrics %>% 
-  filter(jornal == "veja") %>% 
+  filter(jornal == "Veja") %>% 
   bootstrap(cor(bias_news, words, method = "spearman"), 
             R = resamples) %>% 
     CI.percentile(probs = c(.025, .975))
@@ -332,7 +332,7 @@ oglobo_pop <- readabilityMetrics %>%
     CI.percentile(probs = c(.025, .975))
 
 veja_pop <- readabilityMetrics %>% 
-  filter(jornal == "veja") %>% 
+  filter(jornal == "Veja") %>% 
   bootstrap(cor(bias_news, number_comments, method = "spearman"), 
             R = resamples) %>% 
     CI.percentile(probs = c(.025, .975))
@@ -361,42 +361,10 @@ ggsave("fig5.pdf", width = 8, height = 6)
 ```
 
 ```{r}
-ggarrange(qp3, qp4, 
-          labels = c("A", "B"),
-          ncol = 2)
-
-ggsave("fig4-5.pdf", width = 12, height = 4)
-```
-
-# QP5: Qual o caderno mais subjetivo (considerando todas os portais em um ano de coleta)?
-
-```{r}
-bias_section <- news  %>% 
-  filter(section == "politica") %>% 
-  mutate(month = month(as_datetime(as.numeric(date)))) %>%
-  group_by(month, jornal) %>%
-  summarise(bias = (1 - (mean(arg) + mean(sen) + mean(val) + mean(pre) + mean(mod)) / 5) * 100)
-
-a <- highchart() %>% 
-  #hc_title(text = " Section bias distribution by month") %>%
-  hc_xAxis(categories = c("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")) %>% 
-  hc_yAxis(#title = list(text = "percentage of bias"),
-           labels = list(format = "{value}%"), max = 83) %>% 
-  hc_tooltip(pointFormat = "{point.y}%") %>% 
-  #hc_add_series(name = "diversos" , data = (bias_section %>% filter(section == "diversos"))$bias) %>%  
-  hc_add_series(name = "Carta Capital" , data = (bias_section %>% filter(jornal == "Carta Capital"))$bias) %>%  
-  hc_add_series(name = "El País" , data = (bias_section %>% filter(jornal == "El País"))$bias) %>% 
-  hc_add_series(name = "Estadão" , data = (bias_section %>% filter(jornal == "Estadão"))$bias) %>% 
-  hc_add_series(name = "Folha de SP" , data = (bias_section %>% filter(jornal == "Folha de SP"))$bias) %>% 
-  hc_add_series(name = "O Antagonista" , data = (bias_section %>% filter(jornal == "O Antagonista"))$bias) %>% 
-  hc_add_series(name = "O Globo" , data = (bias_section %>% filter(jornal == "O Globo"))$bias) %>% 
-  hc_add_series(name = "Veja" , data = (bias_section %>% filter(jornal == "Veja"))$bias)
-
-a
-
-#ggsave(a, "fig6.pdf", width = 12, height = 4)
-
-a %>% hc_exporting(enabled = TRUE, filename = "fig6")
+#ggarrange(qp3, qp4, 
+#          labels = c("A", "B"),
+#          ncol = 2)
+#ggsave("fig4-5.pdf", width = 12, height = 4)
 ```
 
 # Conclusões e Trabalhos Futuros
@@ -410,43 +378,3 @@ Neste artigo, realizamos uma análise de subjetividade em notícias de $5$ porta
 * Os resultados mostram evidências de que notícias menores tendem a ser mais subjetivas. Isso pode estar associado à motivação da notícia, intuitivamente notícias que tem por objetivo informar se preocupam em fornecer mais detalhes sobre o fato noticiado, resultando em maior clareza ao leitor.
  
 Em trabalhos futuros, pretendemos incluir mais portais de notícias (p.ex. Carta Capital) afim de cobrir todos os posicionamentos do espectro politico-ideológico. Também pretendemos estender validar nossa abordagem em outros gêneros textuais. Além disso, pretendemos incluir nossas descobertas como features em um sistema de recomendação de notícias, buscando reduzir a subjetividade das notícias recomendadas.
-
-```{r}
-# barchart with added parameters
-max.temp <- c(756.7, 819.2, 374.4, 543.8, 75.44, 506.2, 373.5)
-barplot(max.temp,
-main = "",
-xlab = "",
-ylab = "Media Outlets",
-names.arg = c("Carta Capital", "El País", "Estadão", "Folha de SP", "O Antagonista", "O Globo", "Veja"),
-border="red",
-col="blue",
-density=10
-)
-
-ggsave("fig9.pdf", width = 12, height = 4)
-```
-
-```{r}
-df <- data.frame(dose=c("Carta Capital", "El País", "Estadão", "Folha de SP", "O Antagonista", "O Globo", "Veja"),
-                len=c(756.7, 819.2, 374.4, 543.8, 75.44, 506.2, 373.5))
-
-library(ggplot2)
-# Basic barplot
-p<-ggplot(data=df, aes(x=dose, y=len, fill=dose)) +
-  geom_bar(stat="identity")+
-labs(#title = "Relação entre subjetividade e popularidade",
-       #subtitle = "Correlação entre o tamanho da notícia e sua popularidade",
-       x = "",
-       y = "") + 
-  theme_bw() +
-  theme(legend.position="none", 
-        axis.text=element_text(size=20),
-        plot.title = element_text(size=22)) + coord_flip()
-
-
-ggsave("fig9.pdf", width = 8, height = 6)
-
-```
-
-

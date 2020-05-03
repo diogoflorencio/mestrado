@@ -1,11 +1,15 @@
 ---
 title: "Validação"
-output: html_notebook
+output: 
+  html_notebook:
+    theme: lumen
+    fig_width: 7
+    toc: true
+    toc_float: true
+    code_folding: hide
+editor_options: 
+  chunk_output_type: inline
 ---
-
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
 ```{r message=FALSE, warning=FALSE}
 options(warn=-1) # ignore warns
@@ -24,23 +28,50 @@ library(here)
 library(highcharter)
 library(mongolite)
 
-HOST_IP = "mongodb://192.168.1.8:27017/news_2018"
+HOST_IP = "mongodb://192.168.1.7:27017/news_2018"
 ```
 
-## Corregando dados
+O intuito deste notebook é descrever a metodologia utilizada no processo de validação do estudo de léxicos para analise de subjetividade em notícias de portais brasileiros.
+
+Para isso, foram coletadas notícias e comentários dos cadernos de esporte e política dos portais Carta Capital, El País, Estadão, Folha de São Paulo, O Antagonista, O Globo e Veja durante o período de janeiro à dezembro de 2018. Em 2018, os cadernos de esporte e política cobriram eventos como a copa do mundo de futebol masculino e as eleições presidenciais brasileiras, momentos especialmente interessantes de serem analisados devido a uma maior tendencia das notícias serem apresentadas de forma mais subjetiva, de acordo com o posicionamento esportivo/político do seu editor.
 
 ```{r message=FALSE, warning=FALSE}
-carta_capital <- mongo("carta_capital", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-el_pais <- mongo("el_pais", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-estadao <- mongo("estadao", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-folha <- mongo("folha", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-#gazeta_do_povo <- mongo("gazeta_do_povo", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-oantagonista <- mongo("oantagonista", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-oglobo <- mongo("oglobo", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
-veja <- mongo("veja", url = HOST_IP)$find() %>% select(url, section, arg, sen, val, pre, mod) %>% filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+carta_capital <- mongo("carta_capital", url = HOST_IP)$find() %>%
+  select(url, section, arg, sen, val, pre, mod) %>% 
+  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+el_pais <- mongo("el_pais", url = HOST_IP)$find() %>% 
+  select(url, section, arg, sen, val, pre, mod) %>% 
+  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+estadao <- mongo("estadao", url = HOST_IP)$find() %>% 
+  select(url, section, arg, sen, val, pre, mod) %>% 
+  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+folha <- mongo("folha", url = HOST_IP)$find() %>% 
+  select(url, section, arg, sen, val, pre, mod) %>% 
+  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+#gazeta_do_povo <- mongo("gazeta_do_povo", url = HOST_IP)$find() %>% 
+#  select(url, section, arg, sen, val, pre, mod) %>% 
+#  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+oantagonista <- mongo("oantagonista", url = HOST_IP)$find() %>% 
+  select(url, section, arg, sen, val, pre, mod) %>% 
+  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+oglobo <- mongo("oglobo", url = HOST_IP)$find() %>% 
+  select(url, section, arg, sen, val, pre, mod) %>% 
+  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
+
+veja <- mongo("veja", url = HOST_IP)$find() %>% 
+  select(url, section, arg, sen, val, pre, mod) %>% 
+  filter(arg >= 0, sen >= 0, val >= 0, pre >= 0, mod >= 0)
 ```
 
-## Validação
+## Opinativas x Informativas
+
+Com o objetivo de validar o uso dos léxicos no nosso contexto, rotulamos cada notícia do dataset como opinativa ou informativa e comparamos a subjetividade associada às notícias de cada rótulo. Espera-se que notícias opinativas possuam maior subjetividade que as informativas, uma vez que esse tipo de notícia tem por objetivo expressar explicitamente a opinião e perspectiva do interlocutor sobre o fato noticiado. Consideramos como notícias opinativas aquelas publicadas nas seções de opinião, blogs e colunas de cada portal; as de mais notícias foram consideradas como informativas.
 
 ```{r}
 set.seed(1212)
@@ -227,6 +258,7 @@ ci_portais$portal = c("Carta Capital", "El País", "Estadão", "Folha de SP", "O
 
 ```
 
+A Figura abaixo exibe os intervalos de confiança da diferença média de subjetividade entre notícias opinativas e informativas, com 95% de confiança. Cada intervalo foi calculado a partir de 5000 re-amostragens de tamanho aleatório, computadas por meio de bootstraping com reposição. Intervalos de confiança contendo o valor 0 indicam que não há uma diferença significativa entre as subjetividades dos portais.
 
 ```{r}
 vld1 <- ci_portais %>% 
@@ -251,8 +283,11 @@ vld1
 ggsave("fig0.pdf", width = 8, height = 6)
 ```
 
+Com exceção do portal O Antagonista, o intervalo estimado para os portais são positivos e não incluem 0. Desse modo, observamos que o método utilizado é capaz de estimar maiores índices de subjetividade em notícias opinativas, apresentando o resultado esperado. No caso do O Antagonista, que é declaradamente alinhado a uma ideologia política (direita), o que pode explicar, em algum senso, o fato de não encontramos diferença significativa entre os textos opinativos e informativos.
 
-## Como se compararam a subjetividade entre os portais com posicionamento político definido e não definido ?
+## Posicionamento Político
+
+Esta experimento diz respeito à diferença de subjetividade associada aos portais com posicionamento político declarado e não declarado. Em outras palavras, separamos os portais com posicionamento declarado (ou seja, VEJA, Carta Capital e O Antagonista) daqueles cuja o posicionamento político não é declarado. Intuitivamente, pode-se esperar que os portais com posicionamento político declarado apresentem maior subjetividade em suas notícias, quando comparados aos posicionamentos não declarados, devido à idéia de expor suas opiniões sobre os fatos relatados.
 
 ```{r}
 pos_pol <- bind_rows(
@@ -287,6 +322,8 @@ subj_ci = data.frame(rbind(subj_def, subj_indef))
 subj_ci$jornal = c("Declared Position", "Non-Declared Position")
 ```
 
+A Figura abaixo mostra os intervalos de confiança para a subjetividade média contida nas notícias dos portais com posicionamento político declarado e não declarado. Os resultados indicam que os portais com posicionamento político declarado possuem valores mais altos de subjetividade do que aqueles com posicionamento não declarado.
+
 ```{r}
 vld2 <- subj_ci %>% 
   ggplot(aes(x = jornal, ymin = X2.5., ymax = X97.5., color = jornal)) + 
@@ -306,9 +343,10 @@ ggsave("fig1.pdf", width = 8, height = 6)
 ```
 
 ```{r}
-ggarrange(a, qp1, 
-          labels = c("A", "B"),
-          ncol = 2)
-ggsave("fig0-1.pdf", width = 12, height = 4)
+#ggarrange(a, qp1, 
+#          labels = c("A", "B"),
+#          ncol = 2)
+#ggsave("fig0-1.pdf", width = 12, height = 4)
 ```
 
+Esses resultados reforçam nossa hipótese de que os portais com posicionamento declarado apresentam níveis de subjetividade mais altos em suas notícias do que portais que não possuem posicionamento declarado e atestam a eficiência de nosso método de capturar a subjetividade presente em notícias.

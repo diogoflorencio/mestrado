@@ -29,7 +29,7 @@ library(highcharter)
 library(mongolite)
 library(dplyr)
 
-HOST_IP = "mongodb://192.168.1.6:27017/news_2018"
+HOST_IP = "mongodb://192.168.1.7:27017/news_2018"
 ```
 
 # Analisando alinhamento entre notícias e comentários
@@ -40,7 +40,6 @@ alignmentNewsComments <- mongo("alignmentNewsComments", url = HOST_IP)$find() %>
   drop_na()
 
 alignmentNewsComments$number_comment <- as.factor(alignmentNewsComments$number_comment)
-
 ```
 
 ```{r}
