@@ -29,15 +29,27 @@ library(highcharter)
 library(mongolite)
 library(dplyr)
 
-HOST_IP = "mongodb://192.168.1.7:27017/news_2018"
+HOST_IP = "mongodb://localhost:27017/news_2018"
 ```
 
 # Analisando alinhamento entre notícias e comentários
 
 ```{r}
+# function to normalize the WMD
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+```
+
+
+```{r}
 alignmentNewsComments <- mongo("alignmentNewsComments", url = HOST_IP)$find() %>% 
   filter(!is.infinite(alignment)) %>% filter(number_comment <= 15) %>%
   drop_na()
+
+# normalizing the alignment between news and comments
+alignmentNewsComments$alignment <- normalize(alignmentNewsComments$alignment)
 
 alignmentNewsComments$number_comment <- as.factor(alignmentNewsComments$number_comment)
 ```
@@ -47,6 +59,31 @@ plot(alignmentNewsComments$number_comment, alignmentNewsComments$alignment,
      main = "Alignment between News and Comments",
      xlab = "number comment", ylab = "alignment",
      pch = 19, frame = FALSE)
+
+oantagonistaNewsComments <- alignmentNewsComments %>% filter(mediaoutlet == "oantagonista")
+plot(oantagonistaNewsComments$number_comment, oantagonistaNewsComments$alignment, 
+     main = "Alignment between News and Comments OAntagonista",
+     xlab = "number comment", ylab = "alignment",
+     pch = 19, frame = FALSE)
+
+folhaNewsComments <- alignmentNewsComments %>% filter(mediaoutlet == "folha")
+plot(folhaNewsComments$number_comment, folhaNewsComments$alignment, 
+     main = "Alignment between News and Comments Folha",
+     xlab = "number comment", ylab = "alignment",
+     pch = 19, frame = FALSE)
+
+ogloboNewsComments <- alignmentNewsComments %>% filter(mediaoutlet == "oglobo")
+plot(ogloboNewsComments$number_comment, ogloboNewsComments$alignment, 
+     main = "Alignment between News and Comments OGlobo",
+     xlab = "number comment", ylab = "alignment",
+     pch = 19, frame = FALSE)
+
+vejaNewsComments <- alignmentNewsComments %>% filter(mediaoutlet == "veja")
+plot(vejaNewsComments$number_comment, vejaNewsComments$alignment, 
+     main = "Alignment between News and Comments Veja",
+     xlab = "number comment", ylab = "alignment",
+     pch = 19, frame = FALSE)
+
 ```
 
 # Analisando alinhamento entre comentários
@@ -57,6 +94,9 @@ commentsAlignment <- mongo("commentsAlignment", url = HOST_IP)$find()  %>%
   filter(comments %in% c('1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10')) %>% 
   drop_na()
 
+# normalizing the alignment between comments
+commentsAlignment$alignment <- normalize(commentsAlignment$alignment)
+
 commentsAlignment$comments <- as.factor(commentsAlignment$comments)
 ```
 
@@ -64,5 +104,30 @@ commentsAlignment$comments <- as.factor(commentsAlignment$comments)
 plot(commentsAlignment$comments, commentsAlignment$alignment, 
      main = "Alignment between Comments",
      xlab = "comments", ylab = "alignment",
+     pch = 19, frame = FALSE) #normalização do wmd/ nível de toxídade/ por dimenssão/ por jornal
+
+oantagonistaComments <- commentsAlignment %>% filter(mediaoutlet == "oantagonista")
+plot(oantagonistaComments$comments, oantagonistaComments$alignment, 
+     main = "Alignment between Comments OAntagonista",
+     xlab = "comments", ylab = "alignment",
      pch = 19, frame = FALSE)
+
+folhaComments <- commentsAlignment %>% filter(mediaoutlet == "oglobo")
+plot(folhaComments$comments, folhaComments$alignment, 
+     main = "Alignment between Comments Folha",
+     xlab = "comments", ylab = "alignment",
+     pch = 19, frame = FALSE)
+
+ogloboComments <- commentsAlignment %>% filter(mediaoutlet == "oglobo")
+plot(ogloboComments$comments, ogloboComments$alignment, 
+     main = "Alignment between Comments OGlobo",
+     xlab = "comments", ylab = "alignment",
+     pch = 19, frame = FALSE)
+
+vejaComments <- commentsAlignment %>% filter(mediaoutlet == "veja")
+plot(vejaComments$comments, vejaComments$alignment, 
+     main = "Alignment between Comments Veja",
+     xlab = "comments", ylab = "alignment",
+     pch = 19, frame = FALSE)
+
 ```

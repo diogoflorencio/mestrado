@@ -55,7 +55,7 @@ client = MongoClient(HOST_IP, 27017)
 # select db
 db = client['news_2018']
 # define colelctions
-collections = ['oantagonista', 'oglobo', 'veja']
+collections = ['folha']
 
 for collection in collections:
     len_collection = db[collection].count_documents({})
@@ -65,7 +65,7 @@ for collection in collections:
         count_comment = 1
         first_comment = True
         
-        for comment in db[collection + 'Comments'].find({'id_article': article['url']}, no_cursor_timeout=True).sort('date').batch_size(5):
+        for comment in db[collection + 'Comments'].find({'id_article': article['url']}, no_cursor_timeout=True).batch_size(5):
             
             if first_comment:
                 first_comment = False
@@ -79,7 +79,8 @@ for collection in collections:
                 db['commentsAlignment'].insert_one({
                     'article': article['url'],
                     'comments': str(count_comment-1) + '-' + str(count_comment),
-                    'alignment': w2v.wmdistance(previous_coment, comment_text)
+                    'alignment': w2v.wmdistance(previous_coment, comment_text),
+                    'mediaoutlet':collection
                 })
 
                 previous_coment = comment_text
